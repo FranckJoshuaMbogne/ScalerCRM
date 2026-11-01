@@ -23,6 +23,19 @@ npx supabase db reset           # applies supabase/migrations
 npm run dev                     # http://localhost:3000
 ```
 
+## Connecting a hosted Supabase project
+
+1. **Schema.** From the repo root:
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <project-ref>
+   npx supabase db push          # applies supabase/migrations in order
+   ```
+   (Or paste each file in `supabase/migrations/` into the SQL editor, oldest first.)
+2. **Auth → URL configuration.** Site URL = your app URL. Add `http://localhost:3000/auth/callback` and `https://<your-domain>/auth/callback` to Redirect URLs.
+3. **Auth → Providers → Email.** Keep "Confirm email" on in production. Turn it off locally if you want sign-up to log straight in.
+4. **`.env.local`.** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Project settings → API.
+
 ## Checks
 
 | Command | What it does |

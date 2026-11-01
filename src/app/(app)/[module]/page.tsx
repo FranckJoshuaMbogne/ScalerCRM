@@ -10,7 +10,7 @@ import { allNav, findNav } from "@/components/shell/nav-config";
  */
 export function generateStaticParams() {
   return allNav
-    .filter((item) => item.href !== "/dashboard")
+    .filter((item) => !item.built)
     .map((item) => ({ module: item.href.slice(1) }));
 }
 
