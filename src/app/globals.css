@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/*
+ * SCALER design tokens
+ * ink      — deep navy, the brand surface (sidebar, primary buttons)
+ * signal   — blue accent for anything interactive
+ * paper    — working surface; cards sit on it in pure white
+ * stage-*  — pipeline status colours; used ONLY for lead/order stages
+ */
+:root {
+  --ink: #0e1b33;
+  --ink-2: #172a4d;
+  --ink-fg: #e8edf7;
+  --ink-muted: #8d9bb8;
+  --signal: #2f6bff;
+  --signal-strong: #1f55e0;
+  --signal-soft: #e9f0ff;
+  --paper: #f5f6f8;
+  --surface: #ffffff;
+  --text: #121826;
+  --muted: #5b6578;
+  --line: #e2e5eb;
+  --danger: #c9302c;
+
+  --stage-new: #2f6bff;
+  --stage-contacted: #6d4ff2;
+  --stage-qualified: #0b8a7a;
+  --stage-negotiation: #c77700;
+  --stage-won: #128a4a;
+  --stage-lost: #c9302c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #0a1324;
+    --ink-2: #13213d;
+    --paper: #0f1626;
+    --surface: #16203a;
+    --text: #e6eaf2;
+    --muted: #96a1b8;
+    --line: #26314d;
+    --signal: #5b8cff;
+    --signal-strong: #7aa2ff;
+    --signal-soft: #1b2b52;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: #0a1324;
+  --ink-2: #13213d;
+  --paper: #0f1626;
+  --surface: #16203a;
+  --text: #e6eaf2;
+  --muted: #96a1b8;
+  --line: #26314d;
+  --signal: #5b8cff;
+  --signal-strong: #7aa2ff;
+  --signal-soft: #1b2b52;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-fg: var(--ink-fg);
+  --color-ink-muted: var(--ink-muted);
+  --color-signal: var(--signal);
+  --color-signal-strong: var(--signal-strong);
+  --color-signal-soft: var(--signal-soft);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-danger: var(--danger);
+  --color-stage-new: var(--stage-new);
+  --color-stage-contacted: var(--stage-contacted);
+  --color-stage-qualified: var(--stage-qualified);
+  --color-stage-negotiation: var(--stage-negotiation);
+  --color-stage-won: var(--stage-won);
+  --color-stage-lost: var(--stage-lost);
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+}
+
+html {
+  background: var(--paper);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
