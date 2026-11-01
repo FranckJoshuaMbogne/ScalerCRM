@@ -102,9 +102,9 @@
 ## Sprint 5 — WhatsApp engine & inbox
 **Goal:** WhatsApp conversations live inside the CRM.
 
-- `MessagingProvider` interface; Meta Cloud API adapter; first BSP adapter (provider chosen in Sprint 4 spike)
-- Encrypted credential storage (Supabase Vault), connection test
-- Webhook endpoint: signature verification, `webhook_events` dedupe by external id, fast ack, job hand-off (Inngest)
+- `MessagingProvider` interface; Meta Cloud API adapter (direct, via SCALER's Tech Provider app owned by Springs 360)
+- Embedded Signup: each business connects its own WhatsApp Business Account and numbers from Integrations; per-tenant tokens in encrypted storage (Supabase Vault), connection test
+- One app-level webhook endpoint that routes each event to its tenant by WABA / phone-number ID: signature verification, `webhook_events` dedupe by external id, fast ack, job hand-off (Inngest)
 - Inbound flow: phone match → CIF → open lead or create new lead → conversation
 - Shared inbox: list, unread, assignment, labels, internal notes, customer side panel, media, delivery status, 24-hour window indicator
 - Realtime updates; response-time tracking
@@ -114,7 +114,8 @@
 ## Sprint 6 — Templates, consent & campaigns
 **Goal:** compliant WhatsApp marketing at scale.
 
-- Template manager: create, variables, media header, buttons, submit, sync approval status from provider
+- First BSP adapter behind the same `MessagingProvider` interface
+- Template manager: create, variables, media header, buttons, submit to the tenant's own WABA, sync approval status from provider
 - Consent: opt-in capture, STOP/opt-out handling, suppression list
 - Audience builder with PRD filters + live audience estimate; consent filter enforced
 - Campaigns: draft, test send, schedule, launch, pause/resume, duplicate
@@ -165,8 +166,10 @@ Subscription billing, plan limits, self-serve onboarding, white-label, public AP
 ## Decisions to confirm early
 | Decision | Needed by | Default if not confirmed |
 |----------|-----------|--------------------------|
-| WhatsApp BSP to support first | Sprint 4 | Meta Cloud API only in Sprint 5; BSP adapter Sprint 6 |
-| Meta Business verification + app review started | Sprint 2 | — (long lead time, start now) |
+| WhatsApp integration order | **Decided** | Direct Meta Cloud API in Sprint 5; BSP adapter in Sprint 6 |
+| Owner of SCALER's Meta app | **Decided** | Springs 360 (Tech Provider) |
+| Springs 360 business verification + app review (WhatsApp Tech Provider; `leads_retrieval` for Lead Ads) | Before Sprint 5 | — long lead time; development uses Meta's test number meanwhile |
+| Client-side verification, WABA, numbers, templates | Per client, at onboarding | Each business does this in its own Business Manager |
 | Job queue vendor | Sprint 4 | Inngest |
 | Production domain | Sprint 8 | `app.scalercrm.com` placeholder |
 | MY PERFECT FIT historical data source/format | Sprint 7 | CSV import |
