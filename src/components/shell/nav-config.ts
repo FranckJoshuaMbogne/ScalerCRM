@@ -25,11 +25,14 @@ export type NavItem = {
   summary: string;
   /** Shown in the mobile bottom bar (max 4). */
   mobile?: boolean;
+  /** Has its own route folder; the placeholder route skips it. */
+  built?: boolean;
 };
 
 export const workspaceNav: NavItem[] = [
   {
     href: "/dashboard",
+    built: true,
     label: "Dashboard",
     icon: LayoutDashboard,
     sprint: 8,
@@ -110,6 +113,7 @@ export const workspaceNav: NavItem[] = [
 export const adminNav: NavItem[] = [
   {
     href: "/team",
+    built: true,
     label: "Team & roles",
     icon: Users,
     sprint: 1,
@@ -131,6 +135,7 @@ export const adminNav: NavItem[] = [
   },
   {
     href: "/settings",
+    built: true,
     label: "Settings",
     icon: Cog,
     sprint: 1,

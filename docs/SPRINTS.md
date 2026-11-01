@@ -47,6 +47,7 @@
 
 ## Sprint 1 — Auth, tenants & RBAC
 **Goal:** a business can sign up, configure itself and onboard staff with correct access.
+**Status:** built on branch `sprint-1/auth-tenants-rbac`. Invitations are shared as one-time links (WhatsApp or email by hand); automatic invitation emails come with transactional email in Sprint 3.
 
 - Supabase Auth (email + magic link; Google OAuth optional), session middleware
 - Onboarding wizard: business profile, currency, timezone, first branch
@@ -82,6 +83,7 @@
 - PIC assignment: manual, round-robin per branch, unassigned queue
 - Tasks & follow-ups: due dates, types (call / WhatsApp / visit), overdue state, "My day" view
 - In-app notifications (Supabase Realtime) for assignments and overdue tasks
+- Transactional email (invitations, follow-up reminders) via a provider such as Resend
 - Mobile quick actions: call, WhatsApp deep link, log activity, set follow-up
 
 **Acceptance:** every lead has an owner or explicit unassigned state; overdue follow-ups surface to PIC and manager.

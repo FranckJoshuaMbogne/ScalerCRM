@@ -4,7 +4,7 @@
 \set QUIET on
 
 create schema if not exists tests;
-grant usage on schema tests to authenticated;
+grant usage on schema tests to authenticated, anon;
 
 create or replace function tests.ok(condition boolean, label text)
 returns void language plpgsql as $$
@@ -36,7 +36,7 @@ begin
   perform tests.ok(n = 0, label);
 end $$;
 
-grant execute on all functions in schema tests to authenticated;
+grant execute on all functions in schema tests to authenticated, anon;
 
 -- ---------------------------------------------------------------- fixtures
 \set alice '11111111-1111-1111-1111-111111111111'
