@@ -38,15 +38,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
         <span className="font-semibold tracking-[0.08em] lg:hidden">SCALER</span>
-        <label className="relative ml-auto w-full max-w-sm lg:ml-0">
-          <span className="sr-only">Search customers, leads and orders</span>
+        <form action="/customers" role="search" className="relative ml-auto w-full max-w-sm lg:ml-0">
+          <label htmlFor="global-search" className="sr-only">Search customers by name, phone or CIF</label>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
           <input
+            id="global-search"
             type="search"
-            placeholder="Search by name, phone, CIF or order number"
+            name="q"
+            placeholder="Search by name, phone or CIF"
             className="h-9 w-full rounded-[var(--radius-control)] border border-line bg-paper pr-3 pl-9 text-[13.5px] placeholder:text-muted focus:border-signal focus:outline-none"
           />
-        </label>
+        </form>
         <button type="button" aria-label="Notifications" className="ml-auto rounded-full p-2 text-muted hover:bg-paper">
           <Bell className="size-[18px]" />
         </button>

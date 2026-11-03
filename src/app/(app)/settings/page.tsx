@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ActionForm } from "@/components/ui/action-form";
 import { SubmitButton } from "@/components/ui/form";
-import { PageHeader, Panel } from "@/components/ui/primitives";
+import { linkButton, PageHeader, Panel } from "@/components/ui/primitives";
 import { setBranchActive } from "@/modules/settings/actions";
 import { getBusinessProfile } from "@/modules/settings/queries";
 import { listBranches } from "@/modules/team/queries";
@@ -21,16 +21,25 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Business details and branches. Pipeline stages and custom fields arrive with leads in Sprint 2."
+        description="Business details, branches, custom fields and API keys. Pipeline stage editing arrives in Sprint 3."
         actions={
-          can(ctx, "audit.view") ? (
-            <Link
-              href="/settings/audit"
-              className="inline-flex h-9 items-center rounded-[var(--radius-control)] border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-paper"
-            >
-              Audit log
-            </Link>
-          ) : undefined
+          <>
+            {can(ctx, "settings.custom_fields.manage") && (
+              <Link href="/settings/custom-fields" className={linkButton.secondary}>
+                Custom fields
+              </Link>
+            )}
+            {can(ctx, "integrations.manage") && (
+              <Link href="/settings/api-keys" className={linkButton.secondary}>
+                API keys
+              </Link>
+            )}
+            {can(ctx, "audit.view") && (
+              <Link href="/settings/audit" className={linkButton.secondary}>
+                Audit log
+              </Link>
+            )}
+          </>
         }
       />
 

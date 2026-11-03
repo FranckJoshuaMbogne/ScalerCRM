@@ -62,6 +62,7 @@
 
 ## Sprint 2 — Customers (CIF) & leads core
 **Goal:** every enquiry becomes a lead attached to exactly one customer.
+**Status:** built on branch `claude/sweet-curie-2qveb2`. Decisions in [ADR 0003](adr/0003-customers-and-leads.md), API in [api.md](api.md). Statuses and sources are configurable in the database (`settings.pipeline.manage`); their settings screen ships with the pipeline settings UI in Sprint 3.
 
 - `customers`, `customer_contacts`, `customer_addresses`, tags, `customer_consents`
 - Phone normalisation to E.164 (libphonenumber), CIF number sequence per business (`CIF-000001`)

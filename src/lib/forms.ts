@@ -54,6 +54,18 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (msg.includes("expired")) return "This invitation has expired. Ask for a new one.";
   if (msg.includes("already used")) return "This invitation has already been used.";
   if (msg.includes("invitation not found")) return "This invitation is no longer valid.";
+  if (msg.includes("customer_contacts_value_unique"))
+    return "That phone number or email already belongs to another customer file. If it's the same person, merge the two files.";
+  if (msg.includes("tags_name_unique")) return "A tag with that name already exists.";
+  if (msg.includes("custom_field_definitions_business_id_entity_key_key")) return "A field with that name already exists.";
+  if (msg.includes("already merged")) return "One of these customer files has already been merged.";
+  if (msg.includes("merge a customer into itself")) return "Pick a different customer file to merge.";
+  if (msg.includes("not allowed to assign")) return "You can't assign leads to other people.";
+  if (msg.includes("branch not accessible")) return "You don't have access to that branch.";
+  if (msg.includes("owner must be an active member")) return "Choose someone who is an active member of the business.";
+  if (msg.includes("E.164")) return "That doesn't look like a valid phone number.";
+  if (msg.includes("phone number or email is required")) return "Enter a phone number or an email.";
+  if (msg.includes("customer not found")) return "That customer file couldn't be found.";
   if (error.code === "42501") return "You don't have permission to do that.";
   return msg || "Something went wrong. Try again.";
 }

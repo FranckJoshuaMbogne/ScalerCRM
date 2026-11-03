@@ -12,13 +12,19 @@ const ENTITY: Record<string, string> = {
   business_memberships: "a team member",
   roles: "a role",
   invitations: "an invitation",
+  lead_statuses: "a pipeline stage",
+  lead_sources: "a lead source",
+  custom_field_definitions: "a custom field",
+  api_keys: "an API key",
+  tags: "a tag",
 };
 
 const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted" };
 
 function summarise(e: AuditEntry) {
   const thing = ENTITY[e.entityType] ?? e.entityType.replace(/_/g, " ");
-  const name = typeof e.changes?.name === "string" ? ` “${e.changes.name}”` : "";
+  const label = e.changes?.name ?? e.changes?.label;
+  const name = typeof label === "string" ? ` “${label}”` : "";
   if (e.action !== "update" || !e.changes) return `${VERB[e.action]} ${thing}${name}`;
   const fields = Object.keys(e.changes).map((f) => f.replace(/_id$/, "").replace(/_/g, " "));
   return `changed ${fields.join(", ")} on ${thing}`;
@@ -42,7 +48,7 @@ export default async function AuditPage() {
       </Link>
       <PageHeader
         title="Audit log"
-        description="Every change to business settings, branches, roles and team access. Entries can't be edited or deleted."
+        description="Every change to business settings, branches, roles, team access, pipeline, custom fields and API keys. Entries can't be edited or deleted. Lead and customer history is on each record's timeline."
       />
       <Panel>
         {entries.length === 0 ? (

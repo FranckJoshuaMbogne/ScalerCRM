@@ -12,6 +12,7 @@ export type Membership = {
   businessId: string;
   businessName: string;
   slug: string;
+  countryCode: string;
   currency: string;
   timezone: string;
   roleKey: string;
@@ -27,7 +28,7 @@ export type TenantContext = {
 
 type MembershipRow = {
   id: string;
-  business: { id: string; name: string; slug: string; currency: string; timezone: string } | null;
+  business: { id: string; name: string; slug: string; country_code: string; currency: string; timezone: string } | null;
   role: { key: string; name: string } | null;
 };
 
@@ -45,7 +46,7 @@ export const getMemberships = cache(async (): Promise<Membership[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("business_memberships")
-    .select("id, business:businesses(id, name, slug, currency, timezone), role:roles(key, name)")
+    .select("id, business:businesses(id, name, slug, country_code, currency, timezone), role:roles(key, name)")
     .eq("user_id", user.id)
     .eq("status", "active")
     .returns<MembershipRow[]>();
@@ -59,6 +60,7 @@ export const getMemberships = cache(async (): Promise<Membership[]> => {
       businessId: m.business!.id,
       businessName: m.business!.name,
       slug: m.business!.slug,
+      countryCode: m.business!.country_code,
       currency: m.business!.currency,
       timezone: m.business!.timezone,
       roleKey: m.role!.key,

@@ -41,6 +41,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/leads",
+    built: true,
     label: "Leads",
     icon: ClipboardList,
     sprint: 2,
@@ -50,6 +51,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/customers",
+    built: true,
     label: "Customers",
     icon: UserSquare2,
     sprint: 2,

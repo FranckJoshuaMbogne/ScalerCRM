@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 /** Routes reachable without signing in. */
-const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/invite"];
+const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/invite", "/api/v1"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

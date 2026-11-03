@@ -17,7 +17,7 @@ export function PageHeader({
           <p className="mt-1 max-w-[65ch] text-[14px] text-muted">{description}</p>
         )}
       </div>
-      {actions && <div className="flex gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
@@ -70,3 +70,29 @@ export type Stage = keyof typeof stageClass;
 export function StageDot({ stage }: { stage: Stage }) {
   return <span aria-hidden className={cn("inline-block size-2 rounded-full", stageClass[stage])} />;
 }
+
+export function StatusBadge({ stage, name }: { stage: Stage; name: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2 py-0.5 text-[12px] font-medium whitespace-nowrap">
+      <StageDot stage={stage} />
+      {name}
+    </span>
+  );
+}
+
+export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
+  return (
+    <div className="px-5 py-10 text-center">
+      <p className="text-[14.5px] font-medium">{title}</p>
+      {children && <div className="mt-1 text-[13.5px] text-muted">{children}</div>}
+    </div>
+  );
+}
+
+/** Link styled like a button, for navigation actions in page headers. */
+export const linkButton = {
+  primary:
+    "inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] bg-signal px-3.5 text-[13.5px] font-medium text-white hover:bg-signal-strong",
+  secondary:
+    "inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-paper",
+};
