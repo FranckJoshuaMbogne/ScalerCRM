@@ -62,3 +62,17 @@ describe("outbox rendering", () => {
     expect(escapeHtml(`"a" & 'b'`)).toBe("&quot;a&quot; &amp; &#39;b&#39;");
   });
 });
+
+describe("webhook switched-off email", () => {
+  it("names the endpoint, the error and links to the delivery log", () => {
+    const e = renderOutboxEmail(
+      "webhook_disabled",
+      { business_name: "Pi Tailors", url: "https://erp.example.com/in", last_error: "HTTP 503", path: "/settings/webhooks/abc" },
+      "https://app.example.com",
+    )!;
+    expect(e.subject).toBe("Webhook switched off for Pi Tailors");
+    expect(e.text).toContain("https://erp.example.com/in");
+    expect(e.text).toContain("HTTP 503");
+    expect(e.text).toContain("https://app.example.com/settings/webhooks/abc");
+  });
+});

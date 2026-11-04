@@ -51,6 +51,11 @@ Record each run in the release checklist ([docs/release-checklist.md](../release
    - Set `SIGNUP_HASH_SALT` to a random string.
    - Check Platform → Signups daily for WhatsApp numbers waiting for review.
    - Businesses Springs 360 sets up by hand: clear the trial date in the platform console so they are billed by hand.
+10. **Public API and webhooks (Sprint 13, ADR 0014).**
+    - Nothing to configure. Webhooks go out with the existing job route; check its heartbeat shows `outboundWebhooks`.
+    - Migration `20270517000000` builds four indexes on customers, leads, orders and payments. They block writes to those tables while they build: a few seconds at MY PERFECT FIT's size. Ship it in the evening window.
+    - Existing API keys become `leads:write` keys, so website forms keep working. Check one form submission after the release.
+    - The public reference is at `/developers`. Tell partners about `/api/v1/openapi.json` and the Postman collection.
 
 ## Every release
 

@@ -4,9 +4,9 @@
 \set QUIET on
 
 create schema if not exists loadtest;
-grant usage on schema loadtest to authenticated, service_role;
+grant usage on schema loadtest to anon, authenticated, service_role;
 create table if not exists loadtest.results (label text, role text, median_ms numeric, budget_ms int);
-grant insert on loadtest.results to authenticated, service_role;
+grant insert on loadtest.results to anon, authenticated, service_role;
 
 create or replace function loadtest.bench(p_label text, p_sql text, p_budget_ms int default 300, p_runs int default 5)
 returns void language plpgsql as $$
@@ -23,7 +23,7 @@ begin
   insert into loadtest.results values (p_label, current_user,
     (select percentile_cont(0.5) within group (order by x) from unnest(times) x)::numeric(10,1), p_budget_ms);
 end $$;
-grant execute on function loadtest.bench(text, text, int, int) to authenticated, service_role;
+grant execute on function loadtest.bench(text, text, int, int) to anon, authenticated, service_role;
 
 \o /dev/null
 select id as biz from public.businesses where slug = 'load-test' \gset
@@ -91,6 +91,36 @@ select loadtest.bench('rep: today''s tasks', $q$
   select id, title, due_at from public.tasks where business_id = current_setting('load.biz')::uuid
    and assignee_id = auth.uid() and completed_at is null and cancelled_at is null and due_at < current_date + 1
    order by due_at limit 100$q$, 100);
+reset role;
+
+-- ------------------------------------------------------------ public API (a partner's key) and webhooks
+select set_config('request.jwt.claim.sub', :'admin', false);
+set role authenticated;
+select public.create_api_key(:'biz', 'Load', '{leads:read,leads:write,customers:read,orders:read}') as loadkey \gset
+select public.create_webhook_endpoint(:'biz', 'https://hooks.load.test/in', '{lead.created,lead.stage_changed,order.created}');
+reset role;
+select set_config('load.key', :'loadkey', false);
+select set_config('load.cursor_t', updated_at::text, false), set_config('load.cursor_id', id::text, false)
+  from public.leads where business_id = :'biz' order by updated_at, id offset 75000 limit 1;
+select set_config('request.jwt.claim.sub', '', false);
+set role anon;
+select loadtest.bench('api: leads, first page of 100', $q$
+  select public.api_list(current_setting('load.key'), 'leads', p_limit => 100)$q$, 300);
+select loadtest.bench('api: leads, page 750 by cursor', $q$
+  select public.api_list(current_setting('load.key'), 'leads', current_setting('load.cursor_t')::timestamptz,
+                         current_setting('load.cursor_id')::uuid, p_limit => 100)$q$, 300);
+select loadtest.bench('api: customers changed in the last day', $q$
+  select public.api_list(current_setting('load.key'), 'customers', p_updated_since => now() - interval '1 day', p_limit => 100)$q$, 300);
+select loadtest.bench('api: orders, page of 100 with lines', $q$
+  select public.api_list(current_setting('load.key'), 'orders', p_limit => 100)$q$, 500);
+select loadtest.bench('api: 20 leads in, webhook listening', $q$
+  select count(public.api_submit_lead(current_setting('load.key'), null, 'h' || g,
+           jsonb_build_object('phone', '+9197' || lpad((random() * 99999999)::int::text, 8, '0'), 'full_name', 'API ' || g)))
+    from generate_series(1, 20) g$q$, 2000, 3);
+reset role;
+set role service_role;
+select loadtest.bench('webhooks: claim 50 deliveries', $q$
+  select count(*) from public.claim_webhook_deliveries(50)$q$, 500, 3);
 reset role;
 
 -- ------------------------------------------------------------ campaign send queue (job runner)

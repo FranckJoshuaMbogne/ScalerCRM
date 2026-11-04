@@ -5,6 +5,7 @@ export type ApiKey = {
   id: string;
   name: string;
   prefix: string;
+  scopes: string[];
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdAt: string;
@@ -14,7 +15,7 @@ export async function listApiKeys(businessId: string): Promise<ApiKey[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("api_keys")
-    .select("id, name, prefix, last_used_at, revoked_at, created_at")
+    .select("id, name, prefix, scopes, last_used_at, revoked_at, created_at")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Could not load API keys: ${error.message}`);
@@ -22,6 +23,7 @@ export async function listApiKeys(businessId: string): Promise<ApiKey[]> {
     id: k.id,
     name: k.name,
     prefix: k.prefix,
+    scopes: k.scopes ?? [],
     lastUsedAt: k.last_used_at,
     revokedAt: k.revoked_at,
     createdAt: k.created_at,

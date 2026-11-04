@@ -44,7 +44,9 @@ select tests.ok((
   select coalesce(array_agg(p.proname::text order by p.proname), '{}')
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')
-) = array['api_key_business', 'api_rate_limit', 'api_submit_lead', 'get_invitation', 'health', 'signup_check'],
+) = array['api_create_order', 'api_create_task', 'api_create_webhook', 'api_delete_webhook', 'api_get', 'api_key_business',
+           'api_list', 'api_list_webhooks', 'api_rate', 'api_rate_limit', 'api_submit_lead', 'api_update_lead',
+           'api_update_order', 'api_update_webhook', 'get_invitation', 'health', 'signup_check'],
   'the anonymous role can call only the public API, invitations, health and the sign-up check');
 
 -- And can't touch any table or view directly.
@@ -70,7 +72,7 @@ select tests.ok(not exists (
                        'whatsapp_account_token', 'integration_token', 'claim_campaign_batch', 'claim_automation_runs',
                        'step_automation_run', 'claim_report_schedules', 'claim_push_batch', 'record_job_heartbeat',
                        'housekeeping', 'run_task_jobs', 'billing_ingest', 'billing_tick', 'billing_save_provider_plan',
-                       'snapshot_usage')
+                       'snapshot_usage', 'claim_webhook_deliveries', 'finish_webhook_delivery', 'prune_webhook_log')
      and has_function_privilege('authenticated', p.oid, 'execute')),
   'background-job functions are reserved for the service role');
 

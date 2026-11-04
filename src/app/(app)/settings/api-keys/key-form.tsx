@@ -5,14 +5,30 @@ import { Check, Copy } from "lucide-react";
 import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 import { initialState } from "@/lib/forms";
 import { createApiKey } from "@/modules/api/actions";
+import { API_SCOPES } from "@/modules/api/scopes";
 
 export function CreateKeyForm() {
   const [state, action] = useActionState(createApiKey, initialState);
   const [copied, setCopied] = useState(false);
   return (
     <form action={action} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="Name" name="name" required placeholder="Website contact form" className="min-w-[240px] flex-1" state={state} />
+      <Field label="Name" name="name" required placeholder="Website contact form" className="max-w-[420px]" state={state} />
+      <fieldset>
+        <legend className="mb-1.5 text-[13px] font-medium">What may this key do?</legend>
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {API_SCOPES.map((s) => (
+            <label key={s.key} className="flex items-start gap-2 text-[13.5px]">
+              <input type="checkbox" name="scopes" value={s.key} defaultChecked={s.key === "leads:write"} className="mt-1" />
+              <span>
+                {s.label} <code className="text-[12px] text-muted">{s.key}</code>
+                {s.hint && <span className="block text-[12.5px] text-muted">{s.hint}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+        {state.fieldErrors?.scopes && <p className="mt-1 text-[12.5px] text-danger">{state.fieldErrors.scopes}</p>}
+      </fieldset>
+      <div>
         <SubmitButton pendingLabel="Creating…">Create key</SubmitButton>
       </div>
       <FormMessage state={state} />

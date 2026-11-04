@@ -1,5 +1,6 @@
 /** Transactional email templates. Pure: payload in, subject/html/text out. */
 import { billingEmail } from "@/modules/billing/emails";
+import { webhookDisabledEmail } from "@/modules/webhooks/emails";
 import { escapeHtml, formatDue, layout, type RenderedEmail, str } from "./layout";
 
 export { escapeHtml, formatDue, layout, str };
@@ -125,6 +126,8 @@ export function renderOutboxEmail(template: string, payload: Record<string, unkn
       return taskReminderEmail(payload, origin);
     case "appointment_reminder":
       return appointmentReminderEmail(payload, origin);
+    case "webhook_disabled":
+      return webhookDisabledEmail(payload, origin);
     default:
       return template.startsWith("billing_") ? billingEmail(template, payload, origin) : null;
   }

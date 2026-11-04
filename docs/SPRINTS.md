@@ -244,6 +244,7 @@
 
 ## Sprint 13 — Public API & outbound webhooks
 **Goal:** partners and the businesses' own developers can build on SCALER safely.
+**Status:** built on branch `sprint-13/public-api-webhooks`. Decisions in [ADR 0014](adr/0014-public-api-and-webhooks.md), reference in [api.md](api.md) and on `/developers`. Keys act through `api_*` functions that pin every query to the key's business. That is the same guards and triggers as the app, but not RLS, because the API has no signed-in user. Webhooks go out on the job route's 5-minute tick. `/api/v1` is versioned as the default decision says.
 
 - Scoped API keys (`leads:read`, `leads:write`, `customers:read`, `orders:read`, `orders:write`, `tasks:write`, `webhooks:manage`), hashed and revocable, with a last-used time. The Sprint 2 keys become `leads:write` keys.
 - REST `/api/v1` for customers, leads, orders, payments (read), tasks:

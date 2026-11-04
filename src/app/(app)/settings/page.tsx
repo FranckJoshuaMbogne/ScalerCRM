@@ -49,6 +49,11 @@ export default async function SettingsPage() {
                 API keys
               </Link>
             )}
+            {can(ctx, "integrations.manage") && (
+              <Link href="/settings/webhooks" className={linkButton.secondary}>
+                Webhooks
+              </Link>
+            )}
             {manageBusiness && (
               <Link href="/settings/plan" className={linkButton.secondary}>
                 Plan and usage

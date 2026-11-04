@@ -36,7 +36,7 @@ export default async function ApiKeysPage() {
       </Link>
       <PageHeader
         title="API keys"
-        description="Let your website send enquiries straight into SCALER. Keep keys on your server; never put them in browser code."
+        description="Let your website send enquiries straight into SCALER, and connect other systems through the API. Keep keys on your server; never put them in browser code."
       />
 
       <Panel className="mb-6 p-5">
@@ -54,6 +54,7 @@ export default async function ApiKeysPage() {
               <li key={k.id} className="flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-3 text-[13.5px]">
                 <p className="min-w-[140px] flex-1 font-medium">{k.name}</p>
                 <code className="text-[12.5px] text-muted">{k.prefix}…</code>
+                <p className="text-[12.5px] text-muted">{k.scopes.join(", ")}</p>
                 <p className="text-[12.5px] text-muted">
                   {k.lastUsedAt ? `Last used ${formatDateTime(k.lastUsedAt, tz)}` : "Never used"}
                 </p>
@@ -91,6 +92,16 @@ export default async function ApiKeysPage() {
           <li>A repeat enquiry from a customer with an open lead is added to that lead&apos;s timeline instead of creating a new one.</li>
           <li>Retrying with the same <code>Idempotency-Key</code> returns the first result and never creates a duplicate.</li>
         </ul>
+        <p className="mt-3 text-muted">
+          Reading customers, leads, orders and payments, creating orders and tasks, and webhooks:{" "}
+          <Link href="/developers" className="text-signal hover:underline">
+            API reference
+          </Link>
+          {" · "}
+          <Link href="/settings/webhooks" className="text-signal hover:underline">
+            Webhooks
+          </Link>
+        </p>
       </Panel>
     </>
   );

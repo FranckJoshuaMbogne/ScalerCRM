@@ -9,6 +9,7 @@ import { runAutomations } from "@/modules/automation/worker";
 import { runScheduledReports } from "@/modules/analytics/reports";
 import { retryPendingEvents } from "@/modules/integrations/whatsapp/ingest";
 import { runPushes } from "@/modules/push/send";
+import { runWebhookDeliveries } from "@/modules/webhooks/deliver";
 import { reportError } from "@/lib/monitoring";
 
 /** True when the request carries `Authorization: Bearer $CRON_SECRET`. */
@@ -56,6 +57,7 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
   const automations = await runAutomations().catch((e) => ({ error: e instanceof Error ? e.message : "automation failed" }));
   const reports = await runScheduledReports(origin).catch((e) => ({ error: e instanceof Error ? e.message : "reports failed" }));
   const push = await runPushes().catch((e) => ({ error: e instanceof Error ? e.message : "push failed" }));
+  const outboundWebhooks = await runWebhookDeliveries().catch((e) => ({ error: e instanceof Error ? e.message : "webhooks failed" }));
   const { data: housekeeping } = await admin.rpc("housekeeping");
   // Trials ending, grace running out and reminders. Cheap; safe every run.
   const { data: billing, error: billingError } = await admin.rpc("billing_tick");
@@ -94,6 +96,7 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
     automations,
     reports,
     push,
+    outboundWebhooks,
     housekeeping,
     usageSnapshot,
     billing: billingError ? { error: billingError.message } : billing,

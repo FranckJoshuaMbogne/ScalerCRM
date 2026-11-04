@@ -45,6 +45,21 @@ DATABASE_URL=postgresql://postgres@localhost:5432/postgres scripts/load-test.sh 
 
 All 22 are within budget.
 
+### Public API and webhooks (Sprint 13)
+
+The API calls run as the anonymous role with a partner's key, through the `api_*` functions. A webhook endpoint listens for new leads, so the write test pays for queuing events.
+
+| Query | Median (ms) | Budget (ms) |
+|-------|------------:|------------:|
+| API: leads, first page of 100 | 10.3 | 300 |
+| API: leads, page 750 by cursor | 9.9 | 300 |
+| API: customers changed in the last day | 6.5 | 300 |
+| API: orders, page of 100 with lines | 18.8 | 500 |
+| API: 20 leads in, webhook endpoint listening | 81 | 2,000 |
+| Webhooks: claim 50 deliveries (job runner) | 0.5 | 500 |
+
+These need the `(business_id, updated_at, id)` indexes added in migration `20270517000000`. With them, a deep page costs the same as the first. The other 22 queries are unchanged: all 28 are within budget.
+
 **Campaign throughput:**
 - the send queue claims about 1,600 recipients a second;
 - recording a send takes about 3 ms;

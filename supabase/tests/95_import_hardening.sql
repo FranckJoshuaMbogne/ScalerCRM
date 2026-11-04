@@ -164,7 +164,8 @@ select tests.ok(public.export_allowed(:'biz'), 'limits are per person');
 select public.create_api_key(:'biz', 'Website') as apikey \gset
 reset role;
 set role anon;
-select tests.ok((select bool_and(public.api_rate_limit(:'apikey')) from generate_series(1, 120)), 'an API key gets 120 calls a minute');
+-- Per plan since Sprint 13 (Growth, the trial plan: 300 a minute).
+select tests.ok((select bool_and(public.api_rate_limit(:'apikey')) from generate_series(1, 300)), 'an API key gets its plan''s calls a minute');
 select tests.ok(not public.api_rate_limit(:'apikey'), 'then is throttled');
 select tests.ok(public.api_rate_limit('sk_unknown'), 'unknown keys are left to the API to refuse');
 reset role;

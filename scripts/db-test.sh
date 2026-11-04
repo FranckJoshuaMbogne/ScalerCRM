@@ -26,3 +26,14 @@ for f in "$ROOT"/supabase/tests/[1-9]*.sql; do
   echo "test: $(basename "$f")"
   run "$f"
 done
+
+# API contract: real api_* responses must match the OpenAPI schemas (needs npm ci).
+if [ -x "$ROOT/node_modules/.bin/vitest" ]; then
+  SAMPLES="$(mktemp)"
+  psql "$TEST_URL" -X -q -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/contract_samples.sql" > "$SAMPLES"
+  echo "test: api contract (src/modules/api/contract.test.ts)"
+  (cd "$ROOT" && API_CONTRACT_SAMPLES="$SAMPLES" node_modules/.bin/vitest run src/modules/api/contract.test.ts --reporter=dot)
+  rm -f "$SAMPLES"
+else
+  echo "skip: api contract (run npm ci first)"
+fi

@@ -1,13 +1,15 @@
+import { handleApi } from "@/modules/api/http";
+import { listResource } from "@/modules/api/resources";
 import { submitLead } from "@/modules/api/submit-lead";
 
 /**
- * Public lead intake for website forms.
- *   POST /api/v1/leads
- *   Authorization: Bearer <api key>
- *   Idempotency-Key: <unique per form submission>   (optional, recommended)
- * See docs/api.md.
+ * GET  /api/v1/leads   (leads:read)  list, oldest change first; see docs/api.md
+ * POST /api/v1/leads   (leads:write) an enquiry from a website form or partner
  */
-export async function POST(request: Request) {
-  const result = await submitLead(request);
-  return Response.json(result.body, { status: result.status, headers: { "cache-control": "no-store", ...result.headers } });
+export function GET(request: Request) {
+  return handleApi(request, (ctx) => listResource(ctx, "leads"));
+}
+
+export function POST(request: Request) {
+  return handleApi(request, submitLead);
 }
