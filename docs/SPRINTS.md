@@ -146,6 +146,7 @@
 
 ## Sprint 8 — Automation & analytics
 **Goal:** SCALER acts, not just records; management sees the numbers.
+**Status:** built on branch `sprint-8/automation-analytics`. Decisions in [ADR 0009](adr/0009-automation-and-analytics.md). PDF export is the browser's "Save as PDF" from a print stylesheet. Presets and metric definitions are a working set until the PRD tables are added to the repo.
 
 - Automation engine: triggers, conditions, delays, actions; preconfigured workflows from PRD table; execution logs and retries
 - Lead scoring v1 (rule-based)

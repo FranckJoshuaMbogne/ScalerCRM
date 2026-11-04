@@ -12,6 +12,7 @@ export type LeadFilters = {
   source?: string;
   branch?: string;
   owner?: string; // "me" | "unassigned" | user id
+  sort?: "recent" | "score";
   view?: "open" | "closed" | "archived" | "all";
   page?: number;
 };
@@ -29,6 +30,7 @@ export type LeadListItem = {
   lastActivityAt: string;
   archivedAt: string | null;
   nextFollowUpAt: string | null;
+  score: number;
   customer: { id: string; cifNumber: string; fullName: string; phone: string | null } | null;
 };
 
@@ -45,11 +47,12 @@ type LeadRow = {
   last_activity_at: string;
   archived_at: string | null;
   next_follow_up_at: string | null;
+  score: number;
   customer_id: string;
 };
 
 const LIST_COLUMNS =
-  "id, lead_number, title, expected_value, status_id, first_source_id, branch_id, owner_id, created_at, last_activity_at, archived_at, next_follow_up_at, customer_id";
+  "id, lead_number, title, expected_value, status_id, first_source_id, branch_id, owner_id, created_at, last_activity_at, archived_at, next_follow_up_at, score, customer_id";
 
 function toListItem(l: LeadRow, customers: Map<string, LeadListItem["customer"]>): LeadListItem {
   return {
@@ -65,6 +68,7 @@ function toListItem(l: LeadRow, customers: Map<string, LeadListItem["customer"]>
     lastActivityAt: l.last_activity_at,
     archivedAt: l.archived_at,
     nextFollowUpAt: l.next_follow_up_at,
+    score: l.score ?? 0,
     customer: customers.get(l.customer_id) ?? null,
   };
 }
@@ -125,6 +129,7 @@ export async function listLeads(
     .from("leads")
     .select(LIST_COLUMNS, { count: "exact" })
     .eq("business_id", businessId)
+    .order(filters.sort === "score" ? "score" : "last_activity_at", { ascending: false })
     .order("last_activity_at", { ascending: false })
     .range((page - 1) * LEADS_PAGE_SIZE, page * LEADS_PAGE_SIZE - 1);
 

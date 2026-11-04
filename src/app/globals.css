@@ -105,3 +105,22 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Printing (Analytics → PDF): content only, no app chrome. */
+@media print {
+  aside,
+  header,
+  nav[aria-label="Quick"],
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+}

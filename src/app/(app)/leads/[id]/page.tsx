@@ -307,6 +307,8 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
 
           <Panel className="flex flex-col gap-4 p-5 text-[13.5px]">
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+              <dt className="text-muted">Score</dt>
+              <dd className="tabular-nums" title="From the scoring rules under Automation">{lead.score}</dd>
               <dt className="text-muted">Value</dt>
               <dd className="tabular-nums">{formatMoney(lead.expectedValue, ctx.business.currency)}</dd>
               <dt className="text-muted">Owner</dt>
