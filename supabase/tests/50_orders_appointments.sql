@@ -196,8 +196,12 @@ select tests.fails(format('update public.customer_measurements set readings = %L
                    'measurements are kept as history, never overwritten');
 
 -- ------------------------------------------------------------ appointments
+select least(now() + interval '30 minutes',
+             (date_trunc('day', now() at time zone 'Asia/Kolkata') + interval '1 day' - interval '1 minute') at time zone 'Asia/Kolkata')
+       as a1_at \gset
+-- Soon, but always today in IST (the walk-in below completes today's appointments).
 insert into public.appointments (business_id, branch_id, customer_id, lead_id, kind, starts_at, ends_at, staff_id, created_by)
-values (:'biz', :'main', :'sita', :'sita_lead', 'trial', now() + interval '30 minutes', now() + interval '90 minutes', :'quinn', :'pat')
+values (:'biz', :'main', :'sita', :'sita_lead', 'trial', :'a1_at', :'a1_at'::timestamptz + interval '60 minutes', :'quinn', :'pat')
 returning id as a1 \gset
 insert into public.appointments (business_id, branch_id, customer_id, kind, starts_at, ends_at, staff_id, created_by)
 values (:'biz', :'main', :'ravi', 'measurement', now() - interval '3 hours', now() - interval '2 hours', :'quinn', :'pat')
