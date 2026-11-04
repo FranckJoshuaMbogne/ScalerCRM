@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description:
     "Omnichannel lead management, marketing automation and sales CRM.",
   applicationName: "SCALER",
+  appleWebApp: { capable: true, title: "SCALER", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

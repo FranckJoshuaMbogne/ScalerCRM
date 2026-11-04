@@ -13,6 +13,12 @@ export async function GET(request: Request, routeCtx: RouteContext<"/api/export/
   const ctx = await getContext();
   const supabase = await createClient();
   const biz = ctx.business.businessId;
+  // 20 exports an hour per person (export_allowed also checks membership).
+  const { data: allowed, error: limitError } = await supabase.rpc("export_allowed", { p_business_id: biz });
+  if (limitError) return new Response("forbidden", { status: 403 });
+  if (!allowed) {
+    return new Response("Too many exports in the last hour. Try again later.", { status: 429, headers: { "retry-after": "3600" } });
+  }
   const url = new URL(request.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");

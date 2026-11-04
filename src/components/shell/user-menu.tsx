@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LogOut } from "lucide-react";
+import { PwaMenuItems } from "./pwa";
 
 export function UserMenu({ initials, name, email }: { initials: string; name: string; email: string }) {
   const [open, setOpen] = useState(false);
@@ -22,6 +23,7 @@ export function UserMenu({ initials, name, email }: { initials: string; name: st
             <p className="truncate text-[13.5px] font-medium">{name}</p>
             <p className="truncate text-[12.5px] text-muted">{email}</p>
           </div>
+          <PwaMenuItems />
           <form action="/auth/signout" method="post">
             <button className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13.5px] hover:bg-paper">
               <LogOut className="size-4 text-muted" /> Sign out

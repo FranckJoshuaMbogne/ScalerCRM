@@ -5,6 +5,7 @@ import { getContext, initials } from "@/modules/tenancy/session";
 import { BusinessSwitcher } from "./business-switcher";
 import { MobileNav } from "./mobile-nav";
 import { NotificationBell } from "./notification-bell";
+import { PwaRegister } from "./pwa";
 import { SidebarNav } from "./sidebar";
 import { UserMenu } from "./user-menu";
 import { Wordmark } from "./wordmark";
@@ -42,6 +43,7 @@ async function Account() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh lg:pl-64">
+      <PwaRegister />
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col gap-5 overflow-y-auto bg-ink py-5 lg:flex">
         <Wordmark className="px-6" />
         <Suspense fallback={<div className="mx-3 h-[52px] rounded-[var(--radius-control)] bg-ink-2" />}>

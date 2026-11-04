@@ -52,6 +52,7 @@ export const PERMISSIONS = [
   "integrations.manage",
   "automation.manage",
   "audit.view",
+  "data.import",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

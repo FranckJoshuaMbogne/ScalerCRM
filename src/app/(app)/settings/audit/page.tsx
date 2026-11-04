@@ -35,10 +35,12 @@ const ENTITY: Record<string, string> = {
   attribution_settings: "the attribution policy",
 };
 
-const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted", export: "exported" };
+const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted", export: "exported", import: "imported" };
 
 function summarise(e: AuditEntry) {
   if (e.action === "export") return `exported ${String(e.changes?.rows ?? "")} ${e.entityType} to CSV`;
+  if (e.action === "import")
+    return `imported ${String(e.changes?.file ?? "a file")}: ${String(e.changes?.created ?? 0)} new ${e.entityType}, ${String(e.changes?.failed ?? 0)} refused`;
   const thing = ENTITY[e.entityType] ?? e.entityType.replace(/_/g, " ");
   const label = e.changes?.name ?? e.changes?.label;
   const name = typeof label === "string" ? ` “${label}”` : "";

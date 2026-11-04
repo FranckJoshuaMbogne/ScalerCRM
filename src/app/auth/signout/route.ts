@@ -7,5 +7,7 @@ export async function POST(request: NextRequest) {
   await supabase.auth.signOut();
   const response = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   response.cookies.delete(ACTIVE_BUSINESS_COOKIE);
+  // Remove the service worker, its offline copy of today's tasks and its push subscription from this device.
+  response.headers.set("Clear-Site-Data", '"cache", "storage"');
   return response;
 }
