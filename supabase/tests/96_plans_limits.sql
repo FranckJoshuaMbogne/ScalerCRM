@@ -1,6 +1,9 @@
 -- Plans, limits, usage, suspension, support access and the platform console.
 \set ON_ERROR_STOP on
 \set QUIET on
+-- Runs on its own too: the job checks below call tests.ok as the service role.
+grant usage on schema tests to service_role;
+grant execute on all functions in schema tests to service_role;
 
 \set kai  '30000000-0000-0000-0000-000000000001'
 \set lia  '30000000-0000-0000-0000-000000000002'
