@@ -18,7 +18,7 @@ select public.create_business('Load Test Tailors', 'load-test', 'Main') as biz \
 reset role;
 select set_config('load.biz', :'biz', false) \gset
 -- No plan limits in the load test (Sprint 10): it sends a 60,000-message campaign.
-update public.businesses set plan_key = 'enterprise' where id = :'biz';
+update public.businesses set plan_key = 'enterprise', trial_ends_at = null where id = :'biz';
 select id as branch from public.branches where business_id = :'biz' limit 1 \gset
 
 insert into public.business_memberships (business_id, user_id, role_id, status, joined_at)

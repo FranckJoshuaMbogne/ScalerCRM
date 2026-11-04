@@ -10,19 +10,65 @@ import { getBreakdown, getSummary } from "@/modules/analytics/queries";
 import { localDateKey } from "@/modules/tasks/schedule";
 import { can, getContext } from "@/modules/tenancy/session";
 import { linkButton, PageHeader, Panel } from "@/components/ui/primitives";
+import { ActionForm } from "@/components/ui/action-form";
+import { SubmitButton } from "@/components/ui/form";
+import { dismissChecklist } from "@/modules/onboarding/actions";
+import { getOnboarding } from "@/modules/onboarding/queries";
+import { nextStep, progress, showChecklist, STEPS } from "@/modules/onboarding/steps";
 
 export const metadata = { title: "Dashboard" };
 
-const setup = [
-  { title: "Set up your business and first branch", href: "/settings", sprint: 1 },
-  { title: "Invite your team and give each person a role", href: "/team", sprint: 1 },
-  { title: "Add your first lead or walk-in", href: "/leads", sprint: 2 },
-  { title: "Shape your pipeline and turn on round-robin assignment", href: "/settings/pipeline", sprint: 3 },
-  { title: "Add your products and services, and record the first order", href: "/settings/orders", sprint: 4 },
-  { title: "Turn on the automations you want", href: "/automation", sprint: 8 },
-  { title: "Connect WhatsApp", href: "/integrations", sprint: 5 },
-  { title: "Connect Meta and Google lead forms", href: "/integrations", sprint: 7 },
-];
+
+/** Getting-started checklist until setup is finished or hidden (admins only). */
+async function GettingStarted() {
+  const ctx = await getContext();
+  if (!can(ctx, "settings.business.manage")) return null;
+  const status = await getOnboarding(ctx.business.businessId);
+  if (!showChecklist(status)) return null;
+  const { done, total } = progress(status);
+  const next = nextStep(status);
+  return (
+    <Panel className="mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+        <div>
+          <h2 className="text-[15px] font-semibold">Get started</h2>
+          <p className="text-[13px] text-muted">
+            {done} of {total} done
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {next && (
+            <Link href={`/setup?step=${next}`} className={linkButton.primary}>
+              Continue setup
+            </Link>
+          )}
+          <ActionForm action={dismissChecklist}>
+            <SubmitButton variant="ghost" pendingLabel="…">
+              Hide
+            </SubmitButton>
+          </ActionForm>
+        </div>
+      </div>
+      <ol className="grid divide-y divide-line sm:grid-cols-2 sm:divide-y-0">
+        {STEPS.map((s) => {
+          const finished = status.steps[s.key] && !status.skipped[s.key];
+          return (
+            <li key={s.key} className="flex items-center gap-3 px-5 py-2.5">
+              <span
+                className={`grid size-5 shrink-0 place-items-center rounded-full border text-[11px] ${finished ? "border-stage-won bg-stage-won text-white" : "border-line"}`}
+              >
+                {finished ? "✓" : ""}
+              </span>
+              <Link href={`/setup?step=${s.key}`} className={`text-[14px] hover:text-signal ${finished ? "text-muted line-through" : ""}`}>
+                {s.title}
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </Panel>
+  );
+}
 
 async function Today() {
   const ctx = await getContext();
@@ -145,6 +191,10 @@ export default function DashboardPage() {
       />
 
       <Suspense fallback={null}>
+        <GettingStarted />
+      </Suspense>
+
+      <Suspense fallback={null}>
         <Today />
       </Suspense>
 
@@ -156,27 +206,6 @@ export default function DashboardPage() {
         <Breakdowns />
       </Suspense>
 
-      <Panel className="mt-6">
-        <div className="border-b border-line px-5 py-3.5">
-          <h2 className="text-[15px] font-semibold">Get SCALER ready</h2>
-          <p className="text-[13px] text-muted">
-            Steps unlock as each sprint ships.
-          </p>
-        </div>
-        <ol className="divide-y divide-line">
-          {setup.map((s, i) => (
-            <li key={s.title} className="flex items-center gap-4 px-5 py-3">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-line text-[12.5px] font-medium text-muted">
-                {i + 1}
-              </span>
-              <Link href={s.href} className="flex-1 text-[14px] hover:text-signal">
-                {s.title}
-              </Link>
-              <span className="text-[12px] text-muted">Sprint {s.sprint}</span>
-            </li>
-          ))}
-        </ol>
-      </Panel>
     </>
   );
 }

@@ -21,7 +21,7 @@ select tests.ok(not exists (
 select tests.ok(not exists (
   select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relkind = 'r'
-     and c.relname not in ('businesses', 'profiles', 'permissions', 'role_permissions', 'user_branch_access', 'push_subscriptions', 'plans')
+     and c.relname not in ('businesses', 'profiles', 'permissions', 'role_permissions', 'user_branch_access', 'push_subscriptions', 'plans', 'industry_templates')
      and not exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'business_id' and not a.attisdropped)),
   'every tenant table has a business_id');
 
@@ -44,8 +44,8 @@ select tests.ok((
   select coalesce(array_agg(p.proname::text order by p.proname), '{}')
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')
-) = array['api_key_business', 'api_rate_limit', 'api_submit_lead', 'get_invitation', 'health'],
-  'the anonymous role can call only the public API, invitations and health');
+) = array['api_key_business', 'api_rate_limit', 'api_submit_lead', 'get_invitation', 'health', 'signup_check'],
+  'the anonymous role can call only the public API, invitations, health and the sign-up check');
 
 -- And can't touch any table or view directly.
 select tests.ok(not exists (

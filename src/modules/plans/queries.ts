@@ -8,6 +8,7 @@ export type BusinessPlan = {
   status: "active" | "suspended" | "closed";
   statusReason: string | null;
   suspendedBy: "platform" | "billing" | null;
+  isDemo: boolean;
   trialEndsAt: string | null;
   billingStatus: "trialing" | "active" | "past_due" | "grace" | "read_only" | "cancelled" | null;
   graceEndsAt: string | null;
@@ -27,6 +28,7 @@ export async function getBusinessPlan(businessId: string): Promise<BusinessPlan>
     status: d.status as BusinessPlan["status"],
     statusReason: (d.status_reason as string | null) ?? null,
     suspendedBy: (d.suspended_by as BusinessPlan["suspendedBy"]) ?? null,
+    isDemo: Boolean(d.is_demo),
     trialEndsAt: (d.trial_ends_at as string | null) ?? null,
     billingStatus: (d.billing_status as BusinessPlan["billingStatus"]) ?? null,
     graceEndsAt: (d.grace_ends_at as string | null) ?? null,

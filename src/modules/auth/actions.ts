@@ -1,10 +1,19 @@
 "use server";
 
+import { createHash } from "node:crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { type ActionState, echo, fieldErrors, safeNext } from "@/lib/forms";
 import { siteOrigin } from "@/lib/origin";
 import { createClient } from "@/lib/supabase/server";
+
+/** A hash of the client's address for sign-up rate limits; the address itself is never stored. */
+async function clientHash() {
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+  return createHash("sha256").update(`${process.env.SIGNUP_HASH_SALT ?? "scaler"}:${ip}`).digest("hex").slice(0, 32);
+}
 
 const email = z.email("Enter a valid email address.").trim().toLowerCase();
 
@@ -64,6 +73,16 @@ export async function signUp(_: ActionState, form: FormData): Promise<ActionStat
 
   const next = safeNext(form.get("next"), "/onboarding");
   const supabase = await createClient();
+  const { data: check } = await supabase.rpc("signup_check", { p_email: parsed.data.email, p_client: await clientHash() });
+  if (check === "disposable")
+    return {
+      ok: false,
+      message: "Check the highlighted fields.",
+      fieldErrors: { email: "Use your work email. Temporary inboxes aren't accepted." },
+      values: echo(form),
+    };
+  if (check === "rate_limited")
+    return { ok: false, message: "Too many sign-ups from this network. Try again in an hour.", values: echo(form) };
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,

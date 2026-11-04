@@ -300,6 +300,11 @@ select set_config('request.jwt.claim.sub', :'mo', false);
 set role authenticated;
 select public.create_business('Mu Mehndi', 'mu-mehndi', 'Main') as mu \gset
 reset role;
+-- Signing up starts a trial; Springs 360 takes this one off it to bill by hand.
+select set_config('request.jwt.claim.sub', :'ops', false);
+set role authenticated;
+select public.platform_set_plan(:'mu', 'starter', '{}', null, 'Billed by hand');
+reset role;
 set role service_role;
 select public.billing_tick();
 reset role;

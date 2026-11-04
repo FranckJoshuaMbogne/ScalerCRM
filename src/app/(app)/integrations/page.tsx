@@ -23,7 +23,7 @@ export default async function IntegrationsPage() {
   const [{ data: accounts }, { data: health }] = await Promise.all([
     supabase
       .from("whatsapp_accounts")
-      .select("id, waba_id, phone_number_id, display_phone, verified_name, quality_rating, status, connected_via, provider, connected_at, last_checked_at, last_error")
+      .select("id, waba_id, phone_number_id, display_phone, verified_name, quality_rating, status, connected_via, provider, connected_at, last_checked_at, last_error, review_status, review_note")
       .eq("business_id", businessId)
       .order("connected_at"),
     supabase.rpc("whatsapp_health", { p_business_id: businessId }),
@@ -67,6 +67,16 @@ export default async function IntegrationsPage() {
                     {a.status === "connected" ? "Connected" : a.status === "error" ? "Needs attention" : "Disconnected"}
                   </span>
                   {a.quality_rating && <span className="text-muted">Quality: {a.quality_rating.toLowerCase()}</span>}
+                  {a.review_status === "pending" && (
+                    <span className="rounded-full bg-stage-negotiation/15 px-2 py-0.5 text-[12px] font-medium">
+                      Being checked: replies work, campaigns and templates wait
+                    </span>
+                  )}
+                  {a.review_status === "rejected" && (
+                    <span className="rounded-full bg-danger/10 px-2 py-0.5 text-[12px] font-medium text-danger">
+                      Not approved{a.review_note ? `: ${a.review_note}` : ""}. Contact Springs 360.
+                    </span>
+                  )}
                 </div>
                 <p className="text-[12.5px] text-muted">
                   WABA {a.waba_id} · number ID {a.phone_number_id} · {a.connected_via === "embedded_signup" ? "Embedded Signup" : "manual"} ·

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { ActionForm } from "@/components/ui/action-form";
+import { SubmitButton } from "@/components/ui/form";
+import { deleteDemo } from "@/modules/onboarding/actions";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { getBusinessPlan } from "@/modules/plans/queries";
@@ -34,6 +37,22 @@ export async function StatusBanner() {
   ) : (
     "Ask your business admin to pay."
   );
+
+  if (plan.isDemo) {
+    return (
+      <div role="status" className={`${box} flex flex-wrap items-center gap-x-3 gap-y-2 border-signal/40 bg-signal/5`}>
+        <span>
+          <span className="font-medium">This is a demo business</span> with sample data. Nothing here messages anyone.
+        </span>
+        <ActionForm action={deleteDemo}>
+          <input type="hidden" name="businessId" value={business.businessId} />
+          <SubmitButton variant="secondary" className="h-8" pendingLabel="Removing…">
+            Remove the demo
+          </SubmitButton>
+        </ActionForm>
+      </div>
+    );
+  }
 
   if (business.status === "suspended") {
     if (plan.suspendedBy === "billing") {

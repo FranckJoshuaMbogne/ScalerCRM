@@ -46,6 +46,11 @@ Record each run in the release checklist ([docs/release-checklist.md](../release
    - In the Razorpay dashboard, enable Subscriptions and add the webhook `https://app.<domain>/api/webhooks/billing/razorpay` with the events listed in `.env.example`. Set `RAZORPAY_WEBHOOK_SECRET` to its secret.
    - Run the whole lifecycle with `rzp_test_` keys on a preview first: subscribe, renew, fail a renewal, let grace run out, pay again, cancel.
    - Switch to `rzp_live_` keys only after Springs 360's GST registration is entered. Reconcile the first settlement report in Platform → Billing.
+9. **Self-serve sign-up (Sprint 12, ADR 0013).**
+   - In Supabase Auth, keep "Confirm email" on, and set the site URL and redirect URLs to `https://app.<domain>/auth/callback`.
+   - Set `SIGNUP_HASH_SALT` to a random string.
+   - Check Platform → Signups daily for WhatsApp numbers waiting for review.
+   - Businesses Springs 360 sets up by hand: clear the trial date in the platform console so they are billed by hand.
 
 ## Every release
 

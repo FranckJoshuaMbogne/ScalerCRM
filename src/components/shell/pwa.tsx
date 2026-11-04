@@ -102,3 +102,34 @@ export function PwaMenuItems() {
     </>
   );
 }
+
+/** "Install SCALER" for the setup wizard. Falls back to instructions where the browser has no prompt. */
+export function InstallAppButton() {
+  const canInstall = useSyncExternalStore(subscribeInstall, () => installEvent !== null, () => false);
+  const [installed, setInstalled] = useState(false);
+  async function install() {
+    if (!installEvent) return;
+    await installEvent.prompt();
+    const choice = await installEvent.userChoice.catch(() => ({ outcome: "dismissed" }));
+    installEvent = null;
+    emit();
+    if (choice.outcome === "accepted") setInstalled(true);
+  }
+  if (installed) return <p className="text-[14px] font-medium text-stage-won">Installed. Find SCALER on your home screen.</p>;
+  if (!canInstall)
+    return (
+      <p className="text-[13.5px] text-muted">
+        On iPhone: open SCALER in Safari, tap Share, then Add to Home Screen. On Android: open the browser menu and choose Install
+        app.
+      </p>
+    );
+  return (
+    <button
+      type="button"
+      onClick={install}
+      className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-control)] bg-signal px-4 text-[14px] font-medium text-white hover:bg-signal-strong"
+    >
+      <Download className="size-4" /> Install SCALER
+    </button>
+  );
+}

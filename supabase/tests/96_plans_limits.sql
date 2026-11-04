@@ -104,6 +104,11 @@ select (public.create_lead(:'biz', '{"phone":"+919822000002","full_name":"B"}') 
 select (public.create_lead(:'biz', '{"phone":"+919822000003","full_name":"C"}') ->> 'customer_id') as c3 \gset
 select (public.create_lead(:'biz', '{"phone":"+919822000004","full_name":"D"}') ->> 'customer_id') as c4 \gset
 reset role;
+-- The number was connected during a trial, so Springs 360 reviews it before campaigns (Sprint 12).
+select set_config('request.jwt.claim.sub', :'ops', false);
+set role authenticated;
+select public.platform_review_whatsapp(:'acct', true, 'Checked');
+reset role;
 insert into public.campaigns (business_id, name, account_id, template_id, created_by)
 values (:'biz', 'Too big', :'acct', :'tpl', :'kai') returning id as camp \gset
 select tests.fails(format($$insert into public.campaign_recipients (business_id, campaign_id, customer_id, phone, params)

@@ -54,6 +54,11 @@ export default async function SettingsPage() {
                 Plan and usage
               </Link>
             )}
+            {manageBusiness && (
+              <Link href="/setup" className={linkButton.secondary}>
+                Setup
+              </Link>
+            )}
             {can(ctx, "billing.manage") && (
               <Link href="/settings/billing" className={linkButton.secondary}>
                 Billing

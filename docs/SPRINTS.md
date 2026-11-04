@@ -224,6 +224,7 @@
 
 ## Sprint 12 — Self-serve onboarding
 **Goal:** a new business is working in SCALER on day one without a call.
+**Status:** built on branch `sprint-12/self-serve-onboarding`. Decisions in [ADR 0013](adr/0013-self-serve-onboarding.md). WhatsApp in the wizard links to the existing Embedded Signup. The timed test with five outside people is a [usability-test runbook](runbooks/onboarding-usability-test.md) for a preview deployment.
 
 - Public sign-up with email verification, then a 14-day trial on the Growth plan.
 - Setup wizard, resumable, under 10 steps:

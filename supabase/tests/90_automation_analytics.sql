@@ -22,6 +22,10 @@ reset role;
 select set_config('request.jwt.claim.sub', :'rho', false);
 set role authenticated;
 select public.create_business('Rho Store', 'rho-store', 'Delhi') as other \gset
+-- Established businesses (set up by Springs 360, not self-serve trials): no WhatsApp review.
+reset role;
+update public.businesses set trial_ends_at = null where id in (:'biz', :'other');
+set role authenticated;
 reset role;
 insert into public.business_memberships (business_id, user_id, role_id, status, joined_at)
 select :'biz', :'sven', r.id, 'active', now() from public.roles r where r.key = 'sales_executive' and r.business_id is null;

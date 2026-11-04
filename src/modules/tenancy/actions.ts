@@ -58,7 +58,7 @@ export async function createBusiness(_: ActionState, form: FormData): Promise<Ac
   }
 
   await setActiveBusiness(businessId as string);
-  redirect("/dashboard");
+  redirect("/setup");
 }
 
 export async function switchBusiness(form: FormData) {

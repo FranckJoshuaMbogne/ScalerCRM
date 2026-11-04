@@ -49,6 +49,14 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (limit) return limit;
   if (msg.includes("support access lasts")) return "Support access can last from 1 to 72 hours.";
   if (msg.includes("platform admins only")) return "Only SCALER platform admins can do that.";
+  if (msg.includes("disposable email")) return "Sign up with your work email address. Temporary inboxes can't create a business.";
+  if (msg.includes("too many businesses created today")) return "You've created three businesses today. Try again tomorrow, or contact Springs 360.";
+  if (msg.includes("templates apply only before")) return "Industry templates apply before the first lead or order. Change stages and fields in Settings instead.";
+  if (msg.includes("unknown industry template")) return "Choose one of the industries listed.";
+  if (msg.includes("already have a demo business")) return "You already have a demo business. Switch to it from the business menu.";
+  if (msg.includes("only demo businesses")) return "Only demo businesses can be removed here.";
+  if (msg.includes("whatsapp number awaiting review"))
+    return "Your WhatsApp number is being checked by SCALER (new numbers on a trial are reviewed before campaigns and templates go out). Replies to customers work already. Paying for a plan skips the check.";
   if (msg.includes("plan not on sale")) return "That plan isn't available to buy online. Contact Springs 360.";
   if (msg.includes("plan too small"))
     return "Your business uses more than that plan allows. Remove what's over the limit first, or choose a bigger plan.";
