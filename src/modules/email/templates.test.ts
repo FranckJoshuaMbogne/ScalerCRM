@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import { escapeHtml, invitationEmail, renderOutboxEmail, taskReminderEmail } from "./templates";
+
+const payload = {
+  business_name: "My Perfect Fit",
+  timezone: "Asia/Kolkata",
+  task_title: "Call about <fabric>",
+  task_type: "call",
+  due_at: "2026-12-15T05:00:00Z",
+  lead_number: "L-000042",
+  customer_name: "Ravi Kumar",
+  customer_phone: "+919849012345",
+  path: "/leads/abc",
+};
+
+describe("task reminder email", () => {
+  it("shows the due time in the business time zone", () => {
+    const e = taskReminderEmail(payload, "https://app.example.com");
+    expect(e.subject).toMatch(/^Call due 15 Dec 2026, 10:30\sam: Call about <fabric>$/i);
+    expect(e.text).toContain("Customer: L-000042 · Ravi Kumar (+919849012345)");
+    expect(e.text).toContain("https://app.example.com/leads/abc");
+  });
+
+  it("escapes user text in HTML", () => {
+    const e = taskReminderEmail(payload, "https://app.example.com");
+    expect(e.html).toContain("Call about &lt;fabric&gt;");
+    expect(e.html).not.toContain("<fabric>");
+  });
+
+  it("never links off-site from a stored path", () => {
+    const e = taskReminderEmail({ ...payload, path: "https://evil.example" }, "https://app.example.com");
+    expect(e.text).toContain("https://app.example.com/tasks");
+  });
+});
+
+describe("invitation email", () => {
+  it("names the business, role and link", () => {
+    const e = invitationEmail({ businessName: "Delta", inviterName: "Hana", roleName: "Sales executive", link: "https://x/invite/t" });
+    expect(e.subject).toBe("Hana invited you to Delta on SCALER");
+    expect(e.text).toContain("https://x/invite/t");
+    expect(e.html).toContain('href="https://x/invite/t"');
+  });
+});
+
+describe("outbox rendering", () => {
+  it("returns null for unknown templates", () => {
+    expect(renderOutboxEmail("nope", {}, "https://x")).toBeNull();
+    expect(escapeHtml(`"a" & 'b'`)).toBe("&quot;a&quot; &amp; &#39;b&#39;");
+  });
+});

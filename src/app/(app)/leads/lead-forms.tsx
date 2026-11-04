@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 import { CustomFieldInputs } from "@/components/crm/custom-field-inputs";
 import { Field, FormMessage, SelectField, SubmitButton, TextAreaField } from "@/components/ui/form";
-import { initialState } from "@/lib/forms";
+import { type ActionState, initialState } from "@/lib/forms";
 import type { CustomValues, FieldDefinition } from "@/modules/custom-fields/engine";
 import { changeLeadStatus, createLead, logLeadActivity, updateLead } from "@/modules/leads/actions";
 
@@ -130,16 +130,67 @@ export function EditLeadForm({
   );
 }
 
-export function StatusForm({ leadId, statusId, statuses }: { leadId: string; statusId: string; statuses: Option[] }) {
-  const [state, action] = useActionState(changeLeadStatus, initialState);
+export function StatusForm({
+  leadId,
+  statusId,
+  statuses,
+  lostReasons,
+  lostReasonId,
+}: {
+  leadId: string;
+  statusId: string;
+  statuses: (Option & { category: "open" | "won" | "lost" })[];
+  lostReasons: Option[];
+  lostReasonId?: string | null;
+}) {
+  const [picked, setPicked] = useState(statusId);
+  const [state, action] = useActionState(async (prev: ActionState, form: FormData) => {
+    const result = await changeLeadStatus(prev, form);
+    // A refused move (pipeline rule, missing owner) snaps the picker back.
+    if (!result.ok && !result.fieldErrors?.lostReasonId) setPicked(statusId);
+    return result;
+  }, initialState);
   const ref = useRef<HTMLFormElement>(null);
+  const lost = statuses.find((s) => s.value === picked)?.category === "lost";
+  // Lost stages need a reason, so they wait for the button; other moves save on change.
+  const needsConfirm = lost && picked !== statusId;
   return (
-    <form ref={ref} action={action} className="flex flex-col gap-2">
+    <form ref={ref} action={action} className="flex flex-col gap-3">
       <input type="hidden" name="leadId" value={leadId} />
-      <SelectField label="Status" name="statusId" id="lead-status" defaultValue={statusId} options={statuses}
-        onChange={() => ref.current?.requestSubmit()} />
+      <SelectField
+        label="Stage"
+        name="statusId"
+        id="lead-status"
+        value={picked}
+        options={statuses}
+        onChange={(e) => {
+          setPicked(e.target.value);
+          const next = statuses.find((s) => s.value === e.target.value);
+          if (next?.category !== "lost") queueMicrotask(() => ref.current?.requestSubmit());
+        }}
+      />
+      {lost && (
+        <>
+          <SelectField
+            label="Why was it lost?"
+            name="lostReasonId"
+            id="lead-lost-reason"
+            defaultValue={lostReasonId ?? ""}
+            options={[{ value: "", label: "Choose a reason" }, ...lostReasons]}
+            required
+            state={state}
+          />
+          <TextAreaField label="Note" name="lostNote" id="lead-lost-note" rows={2} maxLength={1000}
+            placeholder="Optional. What would have changed their mind?" state={state} />
+          <div>
+            <SubmitButton variant={needsConfirm ? "danger" : "secondary"} pendingLabel="Saving…">
+              {needsConfirm ? "Mark as lost" : "Update reason"}
+            </SubmitButton>
+          </div>
+        </>
+      )}
       <noscript>
-        <SubmitButton variant="secondary">Update status</SubmitButton>
+        <SubmitButton variant="secondary">Update stage</SubmitButton>
       </noscript>
       <FormMessage state={state} />
     </form>

@@ -4,6 +4,8 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { type ActionState, fieldErrors, friendlyDbError } from "@/lib/forms";
 import { siteOrigin } from "@/lib/origin";
+import { emailConfigured, sendEmail } from "@/modules/email/send";
+import { invitationEmail } from "@/modules/email/templates";
 import { createClient } from "@/lib/supabase/server";
 import { PERMISSIONS } from "@/modules/permissions/catalog";
 import { PermissionError, requirePermission } from "@/modules/tenancy/session";
@@ -53,11 +55,31 @@ export async function inviteMember(_: ActionState, form: FormData): Promise<Acti
   });
   if (error) return { ok: false, message: friendlyDbError(error) };
 
+  const link = `${await siteOrigin()}/invite/${token}`;
+  // The raw token only exists here, so the email is sent now rather than queued.
+  let emailed = false;
+  if (emailConfigured()) {
+    const { data: role } = await supabase.from("roles").select("name").eq("id", parsed.data.roleId).maybeSingle();
+    const sent = await sendEmail(
+      parsed.data.email,
+      invitationEmail({
+        businessName: ctx.business.businessName,
+        inviterName: ctx.user.fullName || ctx.user.email,
+        roleName: role?.name ?? "a team member",
+        link,
+      }),
+    );
+    emailed = sent.ok;
+    if (!sent.ok) console.error("[invite] email failed:", sent.error);
+  }
+
   refresh();
   return {
     ok: true,
-    message: `Invitation created for ${parsed.data.email}. Share this link with them. It works once and expires in 7 days.`,
-    data: { link: `${await siteOrigin()}/invite/${token}` },
+    message: emailed
+      ? `Invitation emailed to ${parsed.data.email}. You can also share this link. It works once and expires in 7 days.`
+      : `Invitation created for ${parsed.data.email}. Share this link with them. It works once and expires in 7 days.`,
+    data: { link },
   };
   });
 }

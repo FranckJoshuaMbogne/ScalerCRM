@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CalendarPlus, MessageCircle, PenLine, Phone } from "lucide-react";
+import { FollowUpForm } from "@/components/crm/follow-up-form";
+import { TaskList } from "@/components/crm/task-list";
 import { ActionForm } from "@/components/ui/action-form";
 import { SubmitButton } from "@/components/ui/form";
 import { NoAccess } from "@/components/ui/no-access";
@@ -8,9 +11,11 @@ import { formatDateTime, formatMoney, formatPhone } from "@/lib/format";
 import { formatCustomValue } from "@/modules/custom-fields/engine";
 import { listFieldDefinitions } from "@/modules/custom-fields/queries";
 import { setLeadArchived } from "@/modules/leads/actions";
-import { listSources, listStatuses } from "@/modules/leads/config";
+import { listLostReasons, listSources, listStatuses } from "@/modules/leads/config";
 import { getLead } from "@/modules/leads/queries";
 import { ACTIVITY_LABELS, describeLeadActivity } from "@/modules/leads/timeline";
+import { listLeadTasks } from "@/modules/tasks/queries";
+import { describeDue, followUpPresets, toLocalInput } from "@/modules/tasks/schedule";
 import { listBranches, listMembers } from "@/modules/team/queries";
 import { can, getContext } from "@/modules/tenancy/session";
 import { ActivityForm, EditLeadForm, StatusForm } from "../lead-forms";
@@ -67,15 +72,24 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
   const sp = await searchParams;
 
   const businessId = ctx.business.businessId;
-  const [lead, statuses, sources, branches, members, fields] = await Promise.all([
+  const [lead, statuses, sources, branches, members, fields, reasons, tasks] = await Promise.all([
     getLead(id),
     listStatuses(businessId),
     listSources(businessId),
     listBranches(businessId),
     listMembers(businessId),
     listFieldDefinitions(businessId, "lead"),
+    listLostReasons(businessId),
+    listLeadTasks(id),
   ]);
   if (!lead) notFound();
+  const tz = ctx.business.timezone;
+  const now = new Date();
+  const presets = followUpPresets(now, tz).map(({ key, label }) => ({ key, label }));
+  const canTasks = can(ctx, "tasks.manage") && !lead.archivedAt;
+  const activeMembers = members.filter((m) => m.status === "active");
+  const assignees = can(ctx, "tasks.view_all") ? activeMembers.map((m) => ({ value: m.userId, label: m.name })) : undefined;
+  const reasonName = new Map(reasons.map((r) => [r.id, r.name]));
 
   const status = new Map(statuses.map((s) => [s.id, s]));
   const sourceName = new Map(sources.map((s) => [s.id, s.name]));
@@ -86,7 +100,11 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
     status: (v: unknown) => status.get(v as string)?.name,
     source: (v: unknown) => sourceName.get(v as string),
     person: (v: unknown) => person.get(v as string),
+    reason: (v: unknown) => reasonName.get(v as string),
   };
+  const phone = lead.customer?.phone ?? null;
+  const quick =
+    "flex flex-1 flex-col items-center gap-1 rounded-[var(--radius-control)] border border-line bg-surface py-2 text-[12px] font-medium active:bg-paper";
 
   return (
     <>
@@ -115,10 +133,67 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
         </p>
       )}
 
+      {/* Phone quick actions: call, WhatsApp, log, follow-up */}
+      <nav aria-label="Quick actions" className="mb-4 flex gap-2 lg:hidden">
+        {phone && (
+          <>
+            <a href={`tel:${phone}`} className={quick}>
+              <Phone className="size-[18px]" /> Call
+            </a>
+            <a href={`https://wa.me/${phone.slice(1)}`} target="_blank" rel="noreferrer" className={quick}>
+              <MessageCircle className="size-[18px]" /> WhatsApp
+            </a>
+          </>
+        )}
+        {canEdit && (
+          <a href="#log" className={quick}>
+            <PenLine className="size-[18px]" /> Log
+          </a>
+        )}
+        {canTasks && (
+          <a href="#follow-up" className={quick}>
+            <CalendarPlus className="size-[18px]" /> Follow-up
+          </a>
+        )}
+      </nav>
+
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex min-w-0 flex-col gap-6">
+          <Panel id="follow-up" className="scroll-mt-20">
+            <h2 className="flex items-center justify-between border-b border-line px-5 py-3.5 text-[15px] font-semibold">
+              Follow-ups
+              <span className="text-[13px] font-normal text-muted">{tasks.open.length} open</span>
+            </h2>
+            {tasks.open.length > 0 && (
+              <TaskList
+                tasks={tasks.open}
+                now={now}
+                timeZone={tz}
+                presets={presets}
+                people={person}
+                assignees={assignees}
+                showAssignee
+                showLead={false}
+                canManage={can(ctx, "tasks.manage")}
+              />
+            )}
+            {canTasks ? (
+              <div className="border-t border-line p-5">
+                <FollowUpForm
+                  leadId={lead.id}
+                  presets={presets}
+                  assignees={assignees}
+                  defaultAssignee={lead.ownerId ?? ctx.user.id}
+                  minDate={toLocalInput(now, tz)}
+                />
+              </div>
+            ) : (
+              tasks.open.length === 0 && <p className="px-5 py-4 text-[13.5px] text-muted">No follow-ups planned.</p>
+            )}
+          </Panel>
+
           {canEdit && (
-            <Panel className="p-5">
+            <Panel id="log" className="scroll-mt-20 p-5">
               <h2 className="mb-4 text-[15px] font-semibold">Log activity</h2>
               <ActivityForm leadId={lead.id} />
             </Panel>
@@ -159,14 +234,25 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
           <Panel className="p-5">
             {canEdit ? (
               <StatusForm
+                key={`${lead.statusId}:${lead.lostReasonId ?? ""}`}
                 leadId={lead.id}
                 statusId={lead.statusId}
+                lostReasonId={lead.lostReasonId}
                 statuses={statuses
                   .filter((s) => s.isActive || s.id === lead.statusId)
-                  .map((s) => ({ value: s.id, label: s.name }))}
+                  .map((s) => ({ value: s.id, label: s.name, category: s.category }))}
+                lostReasons={reasons
+                  .filter((r) => r.isActive || r.id === lead.lostReasonId)
+                  .map((r) => ({ value: r.id, label: r.name }))}
               />
             ) : (
-              <p className="text-[13.5px]">Status: {current?.name}</p>
+              <p className="text-[13.5px]">Stage: {current?.name}</p>
+            )}
+            {lead.lostReasonId && (
+              <p className="mt-3 text-[13px] text-muted">
+                Lost: <span className="text-text">{reasonName.get(lead.lostReasonId)}</span>
+                {lead.lostNote && <span className="block whitespace-pre-line">{lead.lostNote}</span>}
+              </p>
             )}
           </Panel>
 
@@ -200,7 +286,17 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
               <dt className="text-muted">Value</dt>
               <dd className="tabular-nums">{formatMoney(lead.expectedValue, ctx.business.currency)}</dd>
               <dt className="text-muted">Owner</dt>
-              <dd>{lead.ownerId ? (person.get(lead.ownerId) ?? "Former member") : "Unassigned"}</dd>
+              <dd>
+                {lead.ownerId ? (
+                  (person.get(lead.ownerId) ?? "Former member")
+                ) : (
+                  <span className="rounded-full bg-stage-negotiation/15 px-2 py-0.5 text-[12px] font-medium">Unassigned</span>
+                )}
+              </dd>
+              <dt className="text-muted">Next follow-up</dt>
+              <dd className={lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < now ? "font-medium text-danger" : undefined}>
+                {lead.nextFollowUpAt ? describeDue(new Date(lead.nextFollowUpAt), now, tz) : "None planned"}
+              </dd>
               <dt className="text-muted">First source</dt>
               <dd>{(lead.sourceId && sourceName.get(lead.sourceId)) ?? "—"}</dd>
               <dt className="text-muted">Latest source</dt>

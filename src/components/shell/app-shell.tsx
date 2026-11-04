@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { Bell, Search } from "lucide-react";
+import { countUnreadNotifications } from "@/modules/notifications/queries";
 import { getContext, initials } from "@/modules/tenancy/session";
 import { BusinessSwitcher } from "./business-switcher";
 import { MobileNav } from "./mobile-nav";
+import { NotificationBell } from "./notification-bell";
 import { SidebarNav } from "./sidebar";
 import { UserMenu } from "./user-menu";
 import { Wordmark } from "./wordmark";
@@ -10,6 +12,20 @@ import { Wordmark } from "./wordmark";
 async function Switcher() {
   const ctx = await getContext();
   return <BusinessSwitcher current={ctx.business} options={ctx.memberships} />;
+}
+
+async function Notifications() {
+  const ctx = await getContext();
+  const unread = await countUnreadNotifications(ctx.business.businessId);
+  return <NotificationBell userId={ctx.user.id} businessId={ctx.business.businessId} initialUnread={unread} />;
+}
+
+function BellPlaceholder() {
+  return (
+    <span aria-hidden className="ml-auto rounded-full p-2 text-muted">
+      <Bell className="size-[18px]" />
+    </span>
+  );
 }
 
 async function Account() {
@@ -49,9 +65,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="h-9 w-full rounded-[var(--radius-control)] border border-line bg-paper pr-3 pl-9 text-[13.5px] placeholder:text-muted focus:border-signal focus:outline-none"
           />
         </form>
-        <button type="button" aria-label="Notifications" className="ml-auto rounded-full p-2 text-muted hover:bg-paper">
-          <Bell className="size-[18px]" />
-        </button>
+        <Suspense fallback={<BellPlaceholder />}>
+          <Notifications />
+        </Suspense>
         <Suspense fallback={<span className="size-8 shrink-0 rounded-full bg-line" />}>
           <Account />
         </Suspense>

@@ -17,6 +17,10 @@ const ENTITY: Record<string, string> = {
   custom_field_definitions: "a custom field",
   api_keys: "an API key",
   tags: "a tag",
+  lead_status_transitions: "a stage rule",
+  lead_lost_reasons: "a lost reason",
+  lead_assignment_settings: "lead assignment",
+  round_robin_members: "the round-robin rotation",
 };
 
 const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted" };

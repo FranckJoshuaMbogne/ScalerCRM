@@ -36,6 +36,7 @@ npm run dev                     # http://localhost:3000
 2. **Auth → URL configuration.** Site URL = your app URL. Add `http://localhost:3000/auth/callback` and `https://<your-domain>/auth/callback` to Redirect URLs.
 3. **Auth → Providers → Email.** Keep "Confirm email" on in production. Turn it off locally if you want sign-up to log straight in.
 4. **`.env.local`.** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Project settings → API.
+5. **Background jobs and email (optional, Sprint 3).** Set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY` and `EMAIL_FROM`, then call `GET /api/cron/tasks` with `Authorization: Bearer <CRON_SECRET>` every 5 minutes. That sends overdue alerts and follow-up reminder emails. Any scheduler works: Vercel Cron (Pro plan; Hobby runs only daily), Supabase `pg_cron` + `pg_net` (see ADR 0004), or an external cron service. Without it, the app still shows overdue follow-ups on My day, the dashboard and the board.
 
 ## Checks
 

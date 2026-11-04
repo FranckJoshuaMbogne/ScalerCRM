@@ -9,6 +9,18 @@ const FIELD_LABELS: Record<string, string> = {
   branch_id: "branch",
   owner_id: "owner",
   custom_fields: "custom fields",
+  lost_reason_id: "lost reason",
+  lost_note: "lost note",
+};
+
+export const TASK_TYPE_LABELS: Record<string, string> = {
+  follow_up: "follow-up",
+  call: "call",
+  whatsapp: "WhatsApp",
+  visit: "store visit",
+  meeting: "meeting",
+  email: "email",
+  other: "task",
 };
 
 export const ACTIVITY_LABELS: Record<string, string> = {
@@ -22,15 +34,28 @@ export const ACTIVITY_LABELS: Record<string, string> = {
 
 export function describeLeadActivity(
   a: { type: string; meta: Record<string, unknown> },
-  names: { status: Lookup; source: Lookup; person: Lookup },
+  names: { status: Lookup; source: Lookup; person: Lookup; reason?: Lookup },
 ): string {
   switch (a.type) {
     case "created": {
       const source = names.source(a.meta.source_id);
-      return source ? `created the lead from ${source}` : "created the lead";
+      const owner = a.meta.owner_id ? names.person(a.meta.owner_id) : undefined;
+      return `created the lead${source ? ` from ${source}` : ""}${owner ? ` for ${owner}` : ""}`;
     }
-    case "status_changed":
-      return `moved it from ${names.status(a.meta.from) ?? "?"} to ${names.status(a.meta.to) ?? "?"}`;
+    case "status_changed": {
+      const move = `moved it from ${names.status(a.meta.from) ?? "?"} to ${names.status(a.meta.to) ?? "?"}`;
+      const reason = a.meta.lost_reason_id ? names.reason?.(a.meta.lost_reason_id) : undefined;
+      return reason ? `${move} (${reason})` : move;
+    }
+    case "task_created": {
+      const type = TASK_TYPE_LABELS[String(a.meta.task_type)] ?? "task";
+      const who = a.meta.assignee_id ? names.person(a.meta.assignee_id) : undefined;
+      return `set a ${type}: ${String(a.meta.title ?? "")}${who ? ` for ${who}` : ""}`;
+    }
+    case "task_completed":
+      return `completed ${String(a.meta.title ?? "a task")}`;
+    case "task_cancelled":
+      return `cancelled ${String(a.meta.title ?? "a task")}`;
     case "enquiry": {
       const source = names.source(a.meta.source_id);
       return `sent another enquiry${source ? ` via ${source}` : ""}`;

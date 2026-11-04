@@ -66,6 +66,26 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (msg.includes("E.164")) return "That doesn't look like a valid phone number.";
   if (msg.includes("phone number or email is required")) return "Enter a phone number or an email.";
   if (msg.includes("customer not found")) return "That customer file couldn't be found.";
+  if (msg.includes("lead_statuses_stage_matches_category")) return "Won and lost stages use their own colour.";
+  if (msg.includes("lead_statuses_business_id_key_key") || msg.includes("lead_sources_business_id_key_key"))
+    return "That name is already used. Try another.";
+  if (msg.includes("lead_lost_reasons_name_unique")) return "That reason is already in the list.";
+  if (msg.includes("default stage must be")) return "New leads must start in an open stage that's in use.";
+  if (msg.includes("default stage cannot require an owner"))
+    return "The stage new leads start in can't require an owner, because website and API leads arrive unassigned.";
+  if (msg.includes("stage type cannot change")) return "Leads use this stage, so its type can't change. Add a new stage instead.";
+  if (msg.includes("move the leads out of this stage")) return "Move the leads in this stage to another stage before hiding it.";
+  if (msg.includes("lost reason required")) return "Choose why the lead was lost.";
+  if (msg.includes("unknown lost reason")) return "Choose one of the lost reasons in the list.";
+  if (msg.includes("stage transition not allowed")) return "Your pipeline rules don't allow that move.";
+  if (msg.includes("this stage needs an owner")) return "Assign the lead to someone first. This stage needs an owner.";
+  if (msg.includes("new leads start in an active open stage")) return "New leads start in an open stage.";
+  if (msg.includes("no longer in use")) return "That stage is no longer in use.";
+  if (msg.includes("owner cannot see leads in this branch"))
+    return "That person can't see leads in this branch. Pick someone with access, or change the branch.";
+  if (msg.includes("not allowed to assign tasks")) return "You can only give tasks to yourself.";
+  if (msg.includes("assignee must be an active member")) return "Choose someone who is an active member of the business.";
+  if (msg.includes("round_robin_members_business_id_branch_id_user_id_key")) return "That person is already in this rotation.";
   if (error.code === "42501") return "You don't have permission to do that.";
   return msg || "Something went wrong. Try again.";
 }

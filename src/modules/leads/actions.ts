@@ -150,19 +150,36 @@ export async function updateLead(_: ActionState, form: FormData): Promise<Action
   });
 }
 
+const moveSchema = z.object({
+  leadId: z.uuid(),
+  statusId: z.uuid(),
+  lostReasonId: z
+    .union([z.uuid(), z.literal("")])
+    .nullish()
+    .transform((v) => v || null),
+  lostNote: z.string().trim().max(1000, "Keep the note under 1,000 characters.").nullish(),
+});
+
+/** Moves a lead to another stage. Lost stages need a reason; the database enforces the pipeline rules. */
 export async function changeLeadStatus(_: ActionState, form: FormData): Promise<ActionState> {
   return guard(async () => {
     const ctx = await requirePermission("leads.edit");
-    const leadId = z.uuid().parse(form.get("leadId"));
-    const statusId = z.uuid().parse(form.get("statusId"));
+    const parsed = moveSchema.safeParse(Object.fromEntries(form));
+    if (!parsed.success) return fieldErrors(parsed.error, form);
+    const d = parsed.data;
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("leads")
-      .update({ status_id: statusId })
-      .eq("id", leadId)
+      .update({ status_id: d.statusId, lost_reason_id: d.lostReasonId, lost_note: d.lostNote || null })
+      .eq("id", d.leadId)
       .eq("business_id", ctx.business.businessId)
       .select("id");
-    if (error) return { ok: false, message: friendlyDbError(error) };
+    if (error) {
+      const message = friendlyDbError(error);
+      return error.message.includes("lost reason")
+        ? { ok: false, message, fieldErrors: { lostReasonId: message }, values: echo(form) }
+        : { ok: false, message, values: echo(form) };
+    }
     if (!data?.length) return { ok: false, message: "You can't change this lead." };
     refresh();
     return { ok: true, message: "Status updated." };

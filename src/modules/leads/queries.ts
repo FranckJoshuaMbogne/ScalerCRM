@@ -28,6 +28,7 @@ export type LeadListItem = {
   createdAt: string;
   lastActivityAt: string;
   archivedAt: string | null;
+  nextFollowUpAt: string | null;
   customer: { id: string; cifNumber: string; fullName: string; phone: string | null } | null;
 };
 
@@ -43,11 +44,30 @@ type LeadRow = {
   created_at: string;
   last_activity_at: string;
   archived_at: string | null;
+  next_follow_up_at: string | null;
   customer_id: string;
 };
 
 const LIST_COLUMNS =
-  "id, lead_number, title, expected_value, status_id, first_source_id, branch_id, owner_id, created_at, last_activity_at, archived_at, customer_id";
+  "id, lead_number, title, expected_value, status_id, first_source_id, branch_id, owner_id, created_at, last_activity_at, archived_at, next_follow_up_at, customer_id";
+
+function toListItem(l: LeadRow, customers: Map<string, LeadListItem["customer"]>): LeadListItem {
+  return {
+    id: l.id,
+    leadNumber: l.lead_number,
+    title: l.title,
+    expectedValue: l.expected_value,
+    statusId: l.status_id,
+    sourceId: l.first_source_id,
+    branchId: l.branch_id,
+    ownerId: l.owner_id,
+    createdAt: l.created_at,
+    lastActivityAt: l.last_activity_at,
+    archivedAt: l.archived_at,
+    nextFollowUpAt: l.next_follow_up_at,
+    customer: customers.get(l.customer_id) ?? null,
+  };
+}
 
 async function customersById(ids: string[]) {
   const map = new Map<string, LeadListItem["customer"]>();
@@ -133,23 +153,78 @@ export async function listLeads(
   const { data, error, count } = await query.returns<LeadRow[]>();
   if (error) throw new Error(`Could not load leads: ${error.message}`);
   const customers = await customersById((data ?? []).map((l) => l.customer_id));
-  return {
-    total: count ?? 0,
-    items: (data ?? []).map((l) => ({
-      id: l.id,
-      leadNumber: l.lead_number,
-      title: l.title,
-      expectedValue: l.expected_value,
-      statusId: l.status_id,
-      sourceId: l.first_source_id,
-      branchId: l.branch_id,
-      ownerId: l.owner_id,
-      createdAt: l.created_at,
-      lastActivityAt: l.last_activity_at,
-      archivedAt: l.archived_at,
-      customer: customers.get(l.customer_id) ?? null,
-    })),
-  };
+  return { total: count ?? 0, items: (data ?? []).map((l) => toListItem(l, customers)) };
+}
+
+export type BoardFilters = { owner?: string; branch?: string; source?: string };
+
+export const BOARD_LIMIT = 600;
+export const BOARD_CLOSED_DAYS = 30;
+
+/**
+ * Leads for the kanban board: every open lead, plus leads won or lost in the
+ * last 30 days. Archived leads are left out.
+ */
+export async function listBoardLeads(
+  businessId: string,
+  userId: string,
+  filters: BoardFilters,
+  openStatusIds: string[],
+): Promise<{ items: LeadListItem[]; truncated: boolean }> {
+  const supabase = await createClient();
+  const since = new Date(Date.now() - BOARD_CLOSED_DAYS * 86400_000).toISOString();
+  let query = supabase
+    .from("leads")
+    .select(LIST_COLUMNS)
+    .eq("business_id", businessId)
+    .is("archived_at", null)
+    .or(`status_id.in.(${openStatusIds.join(",") || "00000000-0000-0000-0000-000000000000"}),closed_at.gte.${since}`)
+    .order("last_activity_at", { ascending: false })
+    .limit(BOARD_LIMIT + 1);
+  if (filters.branch) query = query.eq("branch_id", filters.branch);
+  if (filters.source) query = query.eq("first_source_id", filters.source);
+  if (filters.owner === "me") query = query.eq("owner_id", userId);
+  else if (filters.owner === "unassigned") query = query.is("owner_id", null);
+  else if (filters.owner) query = query.eq("owner_id", filters.owner);
+
+  const { data, error } = await query.returns<LeadRow[]>();
+  if (error) throw new Error(`Could not load the board: ${error.message}`);
+  const rows = (data ?? []).slice(0, BOARD_LIMIT);
+  const customers = await customersById(rows.map((l) => l.customer_id));
+  return { items: rows.map((l) => toListItem(l, customers)), truncated: (data ?? []).length > BOARD_LIMIT };
+}
+
+const NONE = ["00000000-0000-0000-0000-000000000000"];
+
+/** Open, unarchived leads with no owner: the assignment queue, oldest first. */
+export async function listUnassignedLeads(businessId: string, openStatusIds: string[], limit = 100) {
+  const supabase = await createClient();
+  const { data, error, count } = await supabase
+    .from("leads")
+    .select(LIST_COLUMNS, { count: "exact" })
+    .eq("business_id", businessId)
+    .is("owner_id", null)
+    .is("archived_at", null)
+    .in("status_id", openStatusIds.length ? openStatusIds : NONE)
+    .order("created_at", { ascending: true })
+    .limit(limit)
+    .returns<LeadRow[]>();
+  if (error) throw new Error(`Could not load unassigned leads: ${error.message}`);
+  const customers = await customersById((data ?? []).map((l) => l.customer_id));
+  return { total: count ?? 0, items: (data ?? []).map((l) => toListItem(l, customers)) };
+}
+
+/** How many open leads are waiting for an owner (dashboard). */
+export async function countUnassignedLeads(businessId: string, openStatusIds: string[]) {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("leads")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .is("owner_id", null)
+    .is("archived_at", null)
+    .in("status_id", openStatusIds.length ? openStatusIds : NONE);
+  return count ?? 0;
 }
 
 export type LeadActivity = {
@@ -171,6 +246,9 @@ export type LeadDetail = LeadListItem & {
   latestTouch: Record<string, string>;
   customFields: CustomValues;
   createdBy: string | null;
+  lostReasonId: string | null;
+  lostNote: string | null;
+  closedAt: string | null;
   activities: LeadActivity[];
 };
 
@@ -179,7 +257,7 @@ export async function getLead(id: string): Promise<LeadDetail | null> {
   const { data: l, error } = await supabase
     .from("leads")
     .select(
-      `${LIST_COLUMNS}, description, latest_source_id, first_campaign, latest_campaign, first_touch, latest_touch, custom_fields, created_by`,
+      `${LIST_COLUMNS}, description, latest_source_id, first_campaign, latest_campaign, first_touch, latest_touch, custom_fields, created_by, lost_reason_id, lost_note, closed_at`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -199,18 +277,7 @@ export async function getLead(id: string): Promise<LeadDetail | null> {
   if (actError) throw new Error(`Could not load lead activity: ${actError.message}`);
 
   return {
-    id: l.id,
-    leadNumber: l.lead_number,
-    title: l.title,
-    expectedValue: l.expected_value,
-    statusId: l.status_id,
-    sourceId: l.first_source_id,
-    branchId: l.branch_id,
-    ownerId: l.owner_id,
-    createdAt: l.created_at,
-    lastActivityAt: l.last_activity_at,
-    archivedAt: l.archived_at,
-    customer: customers.get(l.customer_id) ?? null,
+    ...toListItem(l as LeadRow, customers),
     customerId: l.customer_id,
     description: l.description,
     latestSourceId: l.latest_source_id,
@@ -220,6 +287,9 @@ export async function getLead(id: string): Promise<LeadDetail | null> {
     latestTouch: l.latest_touch ?? {},
     customFields: l.custom_fields ?? {},
     createdBy: l.created_by,
+    lostReasonId: l.lost_reason_id,
+    lostNote: l.lost_note,
+    closedAt: l.closed_at,
     activities: (acts ?? []).map((a) => ({
       id: a.id,
       type: a.type,

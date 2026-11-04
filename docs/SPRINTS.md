@@ -78,6 +78,7 @@
 
 ## Sprint 3 — Pipeline, PIC & tasks
 **Goal:** sales teams can work their pipeline daily.
+**Status:** built on branch `sprint-3/pipeline-pic-tasks`. Decisions in [ADR 0004](adr/0004-pipeline-assignment-tasks.md). Reminder emails and overdue alerts need the job route scheduled every 5 minutes; invitation emails need `RESEND_API_KEY` and `EMAIL_FROM` (without them invitations are still shared as links).
 
 - Kanban board with drag-and-drop between configurable stages; transition rules; lost-reason capture
 - Pipeline settings UI (rename, reorder, add stages, won/lost flags)
