@@ -5,6 +5,8 @@ import { emailConfigured, sendEmail } from "@/modules/email/send";
 import { renderOutboxEmail } from "@/modules/email/templates";
 import { runCampaigns } from "@/modules/campaigns/worker";
 import { runAdSync } from "@/modules/integrations/ads/sync";
+import { runAutomations } from "@/modules/automation/worker";
+import { runScheduledReports } from "@/modules/analytics/reports";
 import { retryPendingEvents } from "@/modules/integrations/whatsapp/ingest";
 
 /** True when the request carries `Authorization: Bearer $CRON_SECRET`. */
@@ -29,6 +31,8 @@ export async function runTaskJobs(origin: string) {
   const webhookRetries = await retryPendingEvents(admin);
   const campaigns = await runCampaigns();
   const ads = await runAdSync().catch((e) => ({ error: e instanceof Error ? e.message : "ad sync failed" }));
+  const automations = await runAutomations().catch((e) => ({ error: e instanceof Error ? e.message : "automation failed" }));
+  const reports = await runScheduledReports(origin).catch((e) => ({ error: e instanceof Error ? e.message : "reports failed" }));
 
   // Without email configured, queued reminders wait (and expire after a day).
   const mail = { sent: 0, failed: 0, skipped: !emailConfigured() };
@@ -49,5 +53,5 @@ export async function runTaskJobs(origin: string) {
       }
     }
   }
-  return { jobs, mail, webhookRetries, campaigns, ads };
+  return { jobs, mail, webhookRetries, campaigns, ads, automations, reports };
 }

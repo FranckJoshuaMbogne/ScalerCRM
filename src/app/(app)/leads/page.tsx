@@ -9,6 +9,8 @@ import { formatMoney, formatPhone } from "@/lib/format";
 import { listSources, listStatuses } from "@/modules/leads/config";
 import { countUnassignedLeads, type LeadFilters, LEADS_PAGE_SIZE, listLeads } from "@/modules/leads/queries";
 import { describeDue } from "@/modules/tasks/schedule";
+import { SavedViews } from "@/components/crm/saved-views";
+import { listSavedViews } from "@/modules/analytics/queries";
 import { listBranches, listMembers } from "@/modules/team/queries";
 import { can, getContext } from "@/modules/tenancy/session";
 
@@ -64,6 +66,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
     branch: one(sp.branch) || undefined,
     owner: one(sp.owner) || undefined,
     view,
+    sort: one(sp.sort) === "score" ? "score" : "recent",
     page: Number(one(sp.page)) || 1,
   };
 
@@ -76,10 +79,15 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   ]);
   const closed = statuses.filter((s) => s.category !== "open").map((s) => s.id);
   const openIds = statuses.filter((s) => s.category === "open").map((s) => s.id);
-  const [{ items, total }, unassigned] = await Promise.all([
+  const [{ items, total }, unassigned, views] = await Promise.all([
     listLeads(businessId, ctx.user.id, ctx.business.countryCode as CountryCode, filters, closed),
     canAll ? countUnassignedLeads(businessId, openIds) : Promise.resolve(0),
+    listSavedViews(businessId, "leads", ctx.user.id),
   ]);
+  const savedQuery = new URLSearchParams(
+    Object.entries({ view, q: filters.q, status: filters.status, source: filters.source, branch: filters.branch, owner: filters.owner, sort: filters.sort === "score" ? "score" : undefined })
+      .filter(([, v]) => v) as [string, string][],
+  ).toString();
   const now = new Date();
   const tz = ctx.business.timezone;
 
@@ -125,6 +133,8 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
           );
         })}
       </nav>
+
+      <SavedViews page="leads" path="/leads" views={views} query={savedQuery} />
 
       <form className="mb-4 flex flex-wrap items-end gap-2" role="search">
         <input type="hidden" name="view" value={view} />
@@ -176,6 +186,10 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
             ))}
           </select>
         )}
+        <select name="sort" defaultValue={filters.sort} aria-label="Sort" className={selectClass}>
+          <option value="recent">Recent activity</option>
+          <option value="score">Hottest first</option>
+        </select>
         <button type="submit" className={linkButton.secondary}>
           Apply
         </button>
@@ -240,6 +254,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
                           <Link href={`/leads/${l.id}`} className="font-medium hover:text-signal">
                             {l.leadNumber}
                           </Link>
+                          {l.score > 0 && <span title="Lead score" className="ml-1.5 rounded bg-stage-negotiation/15 px-1 text-[11px] font-semibold tabular-nums">{l.score}</span>}
                           <p className="max-w-[220px] truncate text-[12.5px] text-muted">{l.title ?? "—"}</p>
                         </td>
                         <td className="px-3 py-2.5">

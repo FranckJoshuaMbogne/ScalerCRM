@@ -26,11 +26,19 @@ const ENTITY: Record<string, string> = {
   measurement_templates: "a measurement template",
   whatsapp_accounts: "a WhatsApp number",
   whatsapp_templates: "a WhatsApp template",
+  automations: "an automation",
+  lead_scoring_rules: "a scoring rule",
+  meta_pages: "a Facebook page",
+  lead_webhooks: "a Google lead webhook",
+  lead_forms: "a lead form mapping",
+  ad_accounts: "an ad account",
+  attribution_settings: "the attribution policy",
 };
 
-const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted" };
+const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted", export: "exported" };
 
 function summarise(e: AuditEntry) {
+  if (e.action === "export") return `exported ${String(e.changes?.rows ?? "")} ${e.entityType} to CSV`;
   const thing = ENTITY[e.entityType] ?? e.entityType.replace(/_/g, " ");
   const label = e.changes?.name ?? e.changes?.label;
   const name = typeof label === "string" ? ` “${label}”` : "";

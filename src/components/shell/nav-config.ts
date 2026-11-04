@@ -103,6 +103,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/analytics",
+    built: true,
     label: "Analytics",
     icon: BarChart3,
     sprint: 8,
@@ -110,6 +111,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/reports",
+    built: true,
     label: "Reports",
     icon: FileText,
     sprint: 8,
@@ -136,6 +138,7 @@ export const adminNav: NavItem[] = [
   },
   {
     href: "/automation",
+    built: true,
     label: "Automation",
     icon: Workflow,
     sprint: 8,
