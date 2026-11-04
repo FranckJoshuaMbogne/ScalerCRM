@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { CountryCode } from "libphonenumber-js";
 import { Plus } from "lucide-react";
+import { LeadViewSwitch } from "@/components/crm/lead-view-switch";
 import { Pager } from "@/components/crm/pager";
 import { NoAccess } from "@/components/ui/no-access";
 import { EmptyState, linkButton, PageHeader, Panel, StatusBadge } from "@/components/ui/primitives";
 import { formatMoney, formatPhone } from "@/lib/format";
 import { listSources, listStatuses } from "@/modules/leads/config";
-import { type LeadFilters, LEADS_PAGE_SIZE, listLeads } from "@/modules/leads/queries";
+import { countUnassignedLeads, type LeadFilters, LEADS_PAGE_SIZE, listLeads } from "@/modules/leads/queries";
+import { describeDue } from "@/modules/tasks/schedule";
 import { listBranches, listMembers } from "@/modules/team/queries";
 import { can, getContext } from "@/modules/tenancy/session";
 
@@ -23,6 +25,30 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 
 const selectClass =
   "h-9 rounded-[var(--radius-control)] border border-line bg-surface px-2.5 text-[13.5px] focus:border-signal focus:outline-none";
+
+function FollowUp({
+  at,
+  now,
+  tz,
+  owner,
+  className,
+}: {
+  at: string | null;
+  now: Date;
+  tz: string;
+  owner?: string | null;
+  className?: string;
+}) {
+  if (!at) {
+    return owner === null ? <p className={`text-[12px] text-muted ${className ?? ""}`}>Unassigned</p> : <span className="text-[12.5px] text-muted">—</span>;
+  }
+  const overdue = new Date(at) < now;
+  return (
+    <p className={`text-[12.5px] tabular-nums ${overdue ? "font-medium text-danger" : "text-muted"} ${className ?? ""}`}>
+      {describeDue(new Date(at), now, tz)}
+    </p>
+  );
+}
 
 export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   const ctx = await getContext();
@@ -49,13 +75,13 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
     listMembers(businessId),
   ]);
   const closed = statuses.filter((s) => s.category !== "open").map((s) => s.id);
-  const { items, total } = await listLeads(
-    businessId,
-    ctx.user.id,
-    ctx.business.countryCode as CountryCode,
-    filters,
-    closed,
-  );
+  const openIds = statuses.filter((s) => s.category === "open").map((s) => s.id);
+  const [{ items, total }, unassigned] = await Promise.all([
+    listLeads(businessId, ctx.user.id, ctx.business.countryCode as CountryCode, filters, closed),
+    canAll ? countUnassignedLeads(businessId, openIds) : Promise.resolve(0),
+  ]);
+  const now = new Date();
+  const tz = ctx.business.timezone;
 
   const status = new Map(statuses.map((s) => [s.id, s]));
   const source = new Map(sources.map((s) => [s.id, s.name]));
@@ -73,11 +99,14 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
             : "Leads assigned to you, newest activity first."
         }
         actions={
-          can(ctx, "leads.create") ? (
-            <Link href="/leads/new" className={linkButton.primary}>
-              <Plus className="size-4" /> Add lead
-            </Link>
-          ) : undefined
+          <>
+            <LeadViewSwitch current="/leads" unassigned={unassigned} />
+            {can(ctx, "leads.create") && (
+              <Link href="/leads/new" className={linkButton.primary}>
+                <Plus className="size-4" /> Add lead
+              </Link>
+            )}
+          </>
         }
       />
 
@@ -183,6 +212,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
                         {l.leadNumber} · {formatPhone(l.customer?.phone)}
                         {l.title ? ` · ${l.title}` : ""}
                       </p>
+                      <FollowUp at={l.nextFollowUpAt} now={now} tz={tz} owner={l.ownerId} className="mt-1" />
                     </Link>
                   </li>
                 );
@@ -197,6 +227,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
                     <th className="px-3 py-2.5 font-medium">Status</th>
                     <th className="px-3 py-2.5 font-medium">Source</th>
                     <th className="px-3 py-2.5 font-medium">Owner</th>
+                    <th className="px-3 py-2.5 font-medium">Next follow-up</th>
                     <th className="px-5 py-2.5 text-right font-medium">Value</th>
                   </tr>
                 </thead>
@@ -230,6 +261,9 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
                         </td>
                         <td className="px-3 py-2.5 text-muted">
                           {l.ownerId ? (person.get(l.ownerId) ?? "Former member") : "Unassigned"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <FollowUp at={l.nextFollowUpAt} now={now} tz={tz} />
                         </td>
                         <td className="px-5 py-2.5 text-right tabular-nums">
                           {formatMoney(l.expectedValue, ctx.business.currency)}

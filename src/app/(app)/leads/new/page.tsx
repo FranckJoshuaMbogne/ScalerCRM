@@ -39,7 +39,7 @@ export default async function NewLeadPage({ searchParams }: PageProps<"/leads/ne
       <Panel className="max-w-3xl p-5">
         <NewLeadForm
           customer={customer && !customer.mergedIntoId ? { id: customer.id, label: `${customer.fullName} · ${customer.cifNumber}` } : null}
-          statuses={statuses.filter((s) => s.isActive).map((s) => ({ value: s.id, label: s.name, isDefault: s.isDefault }))}
+          statuses={statuses.filter((s) => s.isActive && s.category === "open").map((s) => ({ value: s.id, label: s.name, isDefault: s.isDefault }))}
           sources={sources.filter((s) => s.isActive).map((s) => ({ value: s.id, label: s.name }))}
           branches={branches.filter((b) => b.isActive).map((b) => ({ value: b.id, label: b.name }))}
           owners={members.filter((m) => m.status === "active").map((m) => ({ value: m.userId, label: m.name }))}

@@ -90,6 +90,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/tasks",
+    built: true,
     label: "Tasks",
     icon: ListChecks,
     sprint: 3,
@@ -141,7 +142,7 @@ export const adminNav: NavItem[] = [
     label: "Settings",
     icon: Cog,
     sprint: 1,
-    summary: "Business profile, branches, pipeline stages and custom fields.",
+    summary: "Business profile, branches, pipeline stages, lead assignment and custom fields.",
   },
 ];
 

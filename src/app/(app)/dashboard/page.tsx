@@ -1,5 +1,10 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Plus } from "lucide-react";
+import { listStatuses } from "@/modules/leads/config";
+import { countUnassignedLeads } from "@/modules/leads/queries";
+import { countMyTasks } from "@/modules/tasks/queries";
+import { can, getContext } from "@/modules/tenancy/session";
 import {
   linkButton,
   PageHeader,
@@ -34,9 +39,44 @@ const setup = [
   { title: "Set up your business and first branch", href: "/settings", sprint: 1 },
   { title: "Invite your team and give each person a role", href: "/team", sprint: 1 },
   { title: "Add your first lead or walk-in", href: "/leads", sprint: 2 },
+  { title: "Shape your pipeline and turn on round-robin assignment", href: "/settings/pipeline", sprint: 3 },
   { title: "Connect WhatsApp", href: "/integrations", sprint: 5 },
   { title: "Connect Meta and Google lead forms", href: "/integrations", sprint: 7 },
 ];
+
+async function Today() {
+  const ctx = await getContext();
+  const id = ctx.business.businessId;
+  const showQueue = can(ctx, "leads.view_all");
+  const [tasks, unassigned] = await Promise.all([
+    can(ctx, "tasks.manage") ? countMyTasks(id, ctx.user.id, ctx.business.timezone) : Promise.resolve(null),
+    showQueue
+      ? listStatuses(id).then((s) => countUnassignedLeads(id, s.filter((x) => x.category === "open").map((x) => x.id)))
+      : Promise.resolve(null),
+  ]);
+  const tiles = [
+    ...(tasks
+      ? [
+          { label: "Overdue follow-ups", value: tasks.overdue, href: "/tasks", alert: tasks.overdue > 0 },
+          { label: "Due today", value: tasks.today, href: "/tasks", alert: false },
+        ]
+      : []),
+    ...(unassigned !== null
+      ? [{ label: "Unassigned leads", value: unassigned, href: "/leads/queue", alert: unassigned > 0 }]
+      : []),
+  ];
+  if (!tiles.length) return null;
+  return (
+    <Panel className="mb-6 grid grid-cols-1 divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {tiles.map((t) => (
+        <Link key={t.label} href={t.href} className="px-5 py-4 hover:bg-paper/60">
+          <p className="text-[13px] text-muted">{t.label}</p>
+          <p className={`mt-1 text-[26px] font-semibold tracking-tight tabular-nums ${t.alert ? "text-danger" : ""}`}>{t.value}</p>
+        </Link>
+      ))}
+    </Panel>
+  );
+}
 
 export default function DashboardPage() {
   return (
@@ -50,6 +90,10 @@ export default function DashboardPage() {
           </Link>
         }
       />
+
+      <Suspense fallback={null}>
+        <Today />
+      </Suspense>
 
       <Panel className="mb-6 grid grid-cols-2 tabular-nums divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
         {kpis.map((kpi) => (

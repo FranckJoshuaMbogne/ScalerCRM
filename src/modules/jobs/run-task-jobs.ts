@@ -1,0 +1,47 @@
+import "server-only";
+import { timingSafeEqual } from "node:crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { emailConfigured, sendEmail } from "@/modules/email/send";
+import { renderOutboxEmail } from "@/modules/email/templates";
+
+/** True when the request carries `Authorization: Bearer $CRON_SECRET`. */
+export function authorisedCron(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || secret.length < 16) return false;
+  const given = Buffer.from(request.headers.get("authorization") ?? "");
+  const wanted = Buffer.from(`Bearer ${secret}`);
+  return given.length === wanted.length && timingSafeEqual(given, wanted);
+}
+
+type Claimed = { id: number; to_email: string; template: string; payload: Record<string, unknown> };
+
+/**
+ * One pass of the background work: overdue notifications, reminder queueing,
+ * then sending queued email. Safe to run often and concurrently.
+ */
+export async function runTaskJobs(origin: string) {
+  const admin = createAdminClient();
+  const { data: jobs, error } = await admin.rpc("run_task_jobs");
+  if (error) throw new Error(`run_task_jobs failed: ${error.message}`);
+
+  // Without email configured, queued reminders wait (and expire after a day).
+  const mail = { sent: 0, failed: 0, skipped: !emailConfigured() };
+  if (!mail.skipped) {
+    for (let batch = 0; batch < 5; batch++) {
+      const { data, error: claimError } = await admin.rpc("claim_emails", { p_limit: 20 });
+      if (claimError) throw new Error(`claim_emails failed: ${claimError.message}`);
+      const rows = (data ?? []) as Claimed[];
+      if (!rows.length) break;
+      for (const row of rows) {
+        const email = renderOutboxEmail(row.template, row.payload ?? {}, origin);
+        const result = email
+          ? await sendEmail(row.to_email, email)
+          : { ok: false as const, error: `unknown template ${row.template}` };
+        await admin.rpc("finish_email", { p_id: row.id, p_error: result.ok ? null : result.error });
+        if (result.ok) mail.sent++;
+        else mail.failed++;
+      }
+    }
+  }
+  return { jobs, mail };
+}

@@ -21,9 +21,19 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Business details, branches, custom fields and API keys. Pipeline stage editing arrives in Sprint 3."
+        description="Business details, branches, pipeline, lead assignment, custom fields and API keys."
         actions={
           <>
+            {can(ctx, "settings.pipeline.manage") && (
+              <Link href="/settings/pipeline" className={linkButton.secondary}>
+                Pipeline
+              </Link>
+            )}
+            {can(ctx, "leads.assign") && (
+              <Link href="/settings/assignment" className={linkButton.secondary}>
+                Lead assignment
+              </Link>
+            )}
             {can(ctx, "settings.custom_fields.manage") && (
               <Link href="/settings/custom-fields" className={linkButton.secondary}>
                 Custom fields

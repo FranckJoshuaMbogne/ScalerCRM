@@ -32,11 +32,13 @@ Idempotency-Key: 5d0c7c8e-…            (optional, recommended: one per form su
 |-------|-------|
 | `phone` or `email` | At least one. Phones without a country code use the business's country. |
 | `name` | Used only when a new customer file is created. |
-| `source` | A lead source key (default `website`): `meta_ads`, `google_ads`, `whatsapp`, `website`, `walk_in`, `referral`, `phone_call`, `instagram`, `other`. |
+| `source` | A lead source key (default `website`). The defaults are `meta_ads`, `google_ads`, `whatsapp`, `website`, `walk_in`, `referral`, `phone_call`, `instagram` and `other`; Settings → Pipeline lists each source's key, including ones you add. |
 | `campaign`, `utm_*`, `gclid`, `fbclid`, `campaign_id`, `adset_id`, `ad_id`, `form_id`, `page_url`, `referrer` | Stored as the lead's first and latest touch. |
 | `custom_fields` | Only keys defined as lead custom fields are kept. |
 
 Unknown fields are ignored. Body limit: 64 KB.
+
+API leads start in the default stage with no owner. If round-robin is on (Settings → Lead assignment), the next person in the branch's rotation gets the lead and a notification; otherwise it waits in the unassigned queue.
 
 ### Responses
 
