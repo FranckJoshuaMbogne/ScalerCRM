@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import {
-  Button,
+  linkButton,
   PageHeader,
   Panel,
   type Stage,
@@ -45,9 +45,9 @@ export default function DashboardPage() {
         title="Dashboard"
         description="How enquiries are turning into orders across every channel."
         actions={
-          <Button disabled title="Lead entry arrives in Sprint 2">
+          <Link href="/leads/new" className={linkButton.primary}>
             <Plus className="size-4" /> Add lead
-          </Button>
+          </Link>
         }
       />
 

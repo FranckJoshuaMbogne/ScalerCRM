@@ -41,6 +41,41 @@ export function Field({ label, name, hint, state, className, id, ...props }: Fie
   );
 }
 
+type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: string;
+  name: string;
+  hint?: string;
+  state?: ActionState;
+};
+
+export function TextAreaField({ label, name, hint, state, className, id, ...props }: TextAreaProps) {
+  const error = state?.fieldErrors?.[name];
+  const echoed = props.value === undefined && props.defaultValue === undefined ? state?.values?.[name] : undefined;
+  const inputId = id ?? `f-${name}`;
+  return (
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <label htmlFor={inputId} className="text-[13px] font-medium">
+        {label}
+      </label>
+      <textarea
+        id={inputId}
+        name={name}
+        rows={3}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error || hint ? `${inputId}-note` : undefined}
+        className={cn(control, "h-auto min-h-20 py-2 leading-snug")}
+        {...(echoed !== undefined ? { defaultValue: echoed } : {})}
+        {...props}
+      />
+      {(error || hint) && (
+        <p id={`${inputId}-note`} className={cn("text-[12.5px]", error ? "text-danger" : "text-muted")}>
+          {error ?? hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
 type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
   name: string;
@@ -50,13 +85,21 @@ type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
 
 export function SelectField({ label, name, state, options, className, id, ...props }: SelectProps) {
   const error = state?.fieldErrors?.[name];
+  const echoed = props.value === undefined && props.defaultValue === undefined ? state?.values?.[name] : undefined;
   const inputId = id ?? `f-${name}`;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label htmlFor={inputId} className="text-[13px] font-medium">
         {label}
       </label>
-      <select id={inputId} name={name} aria-invalid={error ? true : undefined} className={control} {...props}>
+      <select
+        id={inputId}
+        name={name}
+        aria-invalid={error ? true : undefined}
+        className={control}
+        {...(echoed !== undefined ? { defaultValue: echoed } : {})}
+        {...props}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

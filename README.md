@@ -6,6 +6,7 @@ Leads from Meta, Google, WhatsApp, the website and walk-ins land in one pipeline
 
 - **Plan:** [docs/SPRINTS.md](docs/SPRINTS.md) — 10 two-week sprints to v1.0
 - **Architecture decisions:** [docs/adr](docs/adr)
+- **Public API:** [docs/api.md](docs/api.md) — `POST /api/v1/leads` for website forms
 
 ## Stack
 
@@ -64,6 +65,6 @@ docs/                  sprint plan and ADRs
 ## Rules every change follows
 
 1. Every tenant-owned table has `business_id`, RLS enabled, and an isolation test.
-2. Tenant data is read through the user-scoped Supabase client; the service-role key only appears in server jobs and webhooks.
+2. Tenant data is read through the user-scoped Supabase client; the service-role key only appears in server jobs and webhooks. Public endpoints use the anon key and `security definer` functions that authenticate the caller (see ADR 0003).
 3. Status changes, payments and webhook events are appended, never overwritten.
 4. Anything that talks to Meta, WhatsApp or Google goes through an adapter in `src/modules/integrations`.
