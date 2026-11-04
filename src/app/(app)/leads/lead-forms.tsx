@@ -68,6 +68,10 @@ export function NewLeadForm({
         )}
         <TextAreaField label="Notes" name="description" className="sm:col-span-2" state={state} />
         <CustomFieldInputs definitions={fields} state={state} idPrefix="new" />
+        <label className="flex items-start gap-2 text-[13.5px] sm:col-span-2">
+          <input type="checkbox" name="whatsappOptIn" className="mt-1" />
+          <span>Customer agreed to receive offers on WhatsApp <span className="text-muted">(recorded as consent; they can reply STOP any time)</span></span>
+        </label>
       </fieldset>
 
       <FormMessage state={state} />

@@ -6,6 +6,9 @@ import { authorisedCron, runTaskJobs } from "@/modules/jobs/run-task-jobs";
  * Call every 5 minutes with `Authorization: Bearer $CRON_SECRET`
  * (Vercel Cron sends this header automatically). See docs/adr/0004.
  */
+// Campaign batches can take a while to send.
+export const maxDuration = 300;
+
 async function handle(request: Request) {
   if (!authorisedCron(request)) {
     return Response.json({ error: "unauthorised" }, { status: 401, headers: { "cache-control": "no-store" } });

@@ -8,6 +8,7 @@ import { type ActionState, echo, friendlyDbError } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 import { normalisePhone } from "@/modules/crm/phone";
 import { parseLocalInput } from "@/modules/tasks/schedule";
+import { recordFormOptIn } from "@/modules/customers/consent";
 import { guard } from "@/modules/tenancy/guard";
 import { requirePermission } from "@/modules/tenancy/session";
 
@@ -160,7 +161,8 @@ export async function registerWalkIn(_: ActionState, form: FormData): Promise<Ac
           },
     });
     if (error) return { ok: false, message: friendlyDbError(error), values: echo(form) };
-    const r = data as { lead_id: string; lead_created: boolean; customer_created: boolean; appointment_id: string | null };
+    const r = data as { lead_id: string; customer_id: string; lead_created: boolean; customer_created: boolean; appointment_id: string | null };
+    if (form.get("whatsappOptIn") === "on") await recordFormOptIn(ctx.business.businessId, r.customer_id, ctx.user.id, "walk-in");
     const params = new URLSearchParams({ walkin: "1" });
     if (r.customer_created) params.set("new", "1");
     else if (!r.lead_created) params.set("existing", "1");

@@ -119,6 +119,7 @@
 
 ## Sprint 6 — Templates, consent & campaigns
 **Goal:** compliant WhatsApp marketing at scale.
+**Status:** built on branch `sprint-6/templates-consent-campaigns`. Decisions in [ADR 0007](adr/0007-templates-consent-campaigns.md). The BSP adapter is 360dialog. The send queue is a Postgres-backed throttled queue run by the job route; Inngest was not needed.
 
 - First BSP adapter behind the same `MessagingProvider` interface
 - Template manager: create, variables, media header, buttons, submit to the tenant's own WABA, sync approval status from provider
@@ -176,6 +177,6 @@ Subscription billing, plan limits, self-serve onboarding, white-label, public AP
 | Owner of SCALER's Meta app | **Decided** | Springs 360 (Tech Provider) |
 | Springs 360 business verification + app review (WhatsApp Tech Provider; `leads_retrieval` for Lead Ads) | Before Sprint 5 | — long lead time; development uses Meta's test number meanwhile |
 | Client-side verification, WABA, numbers, templates | Per client, at onboarding | Each business does this in its own Business Manager |
-| Job queue vendor | Sprint 6 | Inngest, if campaign throttling needs it (webhooks use `after()` + Postgres retries, ADR 0006) |
+| Job queue vendor | **Decided** | Postgres-backed queues run by the job route (ADR 0006, 0007); revisit Inngest only if volumes outgrow a 5-minute tick |
 | Production domain | Sprint 8 | `app.scalercrm.com` placeholder |
 | MY PERFECT FIT historical data source/format | Sprint 7 | CSV import |

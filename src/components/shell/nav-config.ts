@@ -69,6 +69,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/campaigns",
+    built: true,
     label: "Campaigns",
     icon: Megaphone,
     sprint: 6,

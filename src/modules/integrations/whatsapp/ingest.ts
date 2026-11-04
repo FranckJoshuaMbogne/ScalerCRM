@@ -2,22 +2,40 @@ import "server-only";
 import type { CountryCode } from "libphonenumber-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/modules/crm/phone";
-import { metaCloud } from "./meta-cloud";
+import { providerFor } from "./providers";
 import type { InboundMessage, StatusUpdate, WebhookItem } from "./webhook";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
 /** Stores each item before the webhook is acknowledged. Duplicates come back as null. */
-export async function recordItems(admin: Admin, items: WebhookItem[]) {
+export async function recordItems(admin: Admin, items: WebhookItem[], accountId?: string) {
   const stored: { id: number; kind: WebhookItem["kind"]; payload: WebhookItem["item"] }[] = [];
   for (const it of items) {
-    const { data, error } = await admin.rpc("record_webhook_event", {
-      p_provider: "meta",
-      p_external_id: it.externalId,
-      p_kind: it.kind,
-      p_phone_number_id: it.phoneNumberId,
-      p_payload: it.item,
-    });
+    if (it.kind === "template") {
+      // Idempotent status update; nothing to queue.
+      const t = it.item;
+      const { error } = await admin.rpc("apply_template_status", {
+        p_waba_id: t.wabaId,
+        p_payload: { id: t.id, name: t.name, language: t.language, status: t.status, reason: t.reason },
+      });
+      if (error) throw new Error(`apply_template_status failed: ${error.message}`);
+      continue;
+    }
+    const { data, error } = accountId
+      ? await admin.rpc("record_webhook_event_for_account", {
+          p_provider: "dialog360",
+          p_external_id: it.externalId,
+          p_kind: it.kind,
+          p_account_id: accountId,
+          p_payload: it.item,
+        })
+      : await admin.rpc("record_webhook_event", {
+          p_provider: "meta",
+          p_external_id: it.externalId,
+          p_kind: it.kind,
+          p_phone_number_id: it.phoneNumberId,
+          p_payload: it.item,
+        });
     if (error) throw new Error(`record_webhook_event failed: ${error.message}`);
     if (data !== null) stored.push({ id: Number(data), kind: it.kind, payload: it.item });
   }
@@ -80,12 +98,23 @@ export async function sendQueuedMessage(messageId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("whatsapp_send_context", { p_message_id: messageId });
   if (error || !data) return { ok: false as const, error: error?.message ?? "message is not queued" };
-  const ctx = data as { body: string; to: string | null; phone_number_id: string; token: string | null };
+  const ctx = data as {
+    body: string;
+    to: string | null;
+    provider: string;
+    waba_id: string;
+    phone_number_id: string | null;
+    token: string | null;
+  };
   if (!ctx.to || !ctx.token) {
     await admin.rpc("record_whatsapp_send", { p_message_id: messageId, p_wamid: null, p_error: { message: "missing number or token" } });
     return { ok: false as const, error: "The customer has no phone number, or the WhatsApp number needs reconnecting." };
   }
-  const sent = await metaCloud.sendText(ctx.phone_number_id, ctx.token, ctx.to, ctx.body);
+  const sent = await providerFor(ctx.provider).sendText(
+    { phoneNumberId: ctx.phone_number_id, wabaId: ctx.waba_id, token: ctx.token },
+    ctx.to,
+    ctx.body,
+  );
   await admin.rpc("record_whatsapp_send", {
     p_message_id: messageId,
     p_wamid: sent.ok ? sent.value.wamid : null,

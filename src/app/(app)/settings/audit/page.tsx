@@ -25,6 +25,7 @@ const ENTITY: Record<string, string> = {
   order_stages: "a fulfilment stage",
   measurement_templates: "a measurement template",
   whatsapp_accounts: "a WhatsApp number",
+  whatsapp_templates: "a WhatsApp template",
 };
 
 const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted" };

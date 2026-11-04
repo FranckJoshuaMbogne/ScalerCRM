@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { disconnectAccount, testConnection } from "@/modules/integrations/actions";
 import { embeddedSignupAvailable, metaConfig } from "@/modules/integrations/whatsapp/config";
 import { can, getContext } from "@/modules/tenancy/session";
-import { EmbeddedSignup, ManualConnect } from "./whatsapp-connect";
+import { Dialog360Connect, EmbeddedSignup, ManualConnect } from "./whatsapp-connect";
 
 export const metadata = { title: "Integrations" };
 
@@ -21,7 +21,7 @@ export default async function IntegrationsPage() {
   const [{ data: accounts }, { data: health }] = await Promise.all([
     supabase
       .from("whatsapp_accounts")
-      .select("id, waba_id, phone_number_id, display_phone, verified_name, quality_rating, status, connected_via, connected_at, last_checked_at, last_error")
+      .select("id, waba_id, phone_number_id, display_phone, verified_name, quality_rating, status, connected_via, provider, connected_at, last_checked_at, last_error")
       .eq("business_id", businessId)
       .order("connected_at"),
     supabase.rpc("whatsapp_health", { p_business_id: businessId }),
@@ -55,7 +55,8 @@ export default async function IntegrationsPage() {
               <li key={a.id} className="flex flex-col gap-2 px-5 py-4 text-[13.5px]">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span className="text-[14.5px] font-medium">{a.verified_name ?? "WhatsApp number"}</span>
-                  <span className="tabular-nums">{a.display_phone ?? a.phone_number_id}</span>
+                  <span className="tabular-nums">{a.display_phone ?? a.phone_number_id ?? ""}</span>
+                  {a.provider === "dialog360" && <span className="text-muted">via 360dialog</span>}
                   <span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${a.status === "connected" ? "bg-stage-won/15" : a.status === "error" ? "bg-danger/10 text-danger" : "bg-line"}`}>
                     {a.status === "connected" ? "Connected" : a.status === "error" ? "Needs attention" : "Disconnected"}
                   </span>
@@ -110,6 +111,11 @@ export default async function IntegrationsPage() {
             <summary className="cursor-pointer text-[14px] font-semibold select-none">Connect with IDs and a token</summary>
             <p className="mt-2 mb-3 text-[13px] text-muted">For Meta&apos;s test number, or a number you manage with a system-user token.</p>
             <ManualConnect />
+          </details>
+          <details className="lg:col-start-2">
+            <summary className="cursor-pointer text-[14px] font-semibold select-none">Connect through 360dialog</summary>
+            <p className="mt-2 mb-3 text-[13px] text-muted">If the business already uses 360dialog as its WhatsApp provider.</p>
+            <Dialog360Connect />
           </details>
         </div>
       </Panel>

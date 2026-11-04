@@ -33,9 +33,12 @@ export type StatusUpdate = {
   errors: unknown[] | null;
 };
 
+export type TemplateUpdate = { wabaId: string; id: string | null; name: string | null; language: string | null; status: string; reason: string | null };
+
 export type WebhookItem =
   | { kind: "message"; externalId: string; phoneNumberId: string; item: InboundMessage }
-  | { kind: "status"; externalId: string; phoneNumberId: string; item: StatusUpdate };
+  | { kind: "status"; externalId: string; phoneNumberId: string; item: StatusUpdate }
+  | { kind: "template"; externalId: string; phoneNumberId: string; item: TemplateUpdate };
 
 type Json = Record<string, unknown>;
 const obj = (v: unknown): Json => (v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : {});
@@ -95,6 +98,27 @@ export function parseWebhook(payload: unknown): WebhookItem[] {
   for (const entry of arr(body.entry)) {
     for (const change of arr(obj(entry).changes)) {
       const c = obj(change);
+      if (c.field === "message_template_status_update") {
+        const v = obj(c.value);
+        const wabaId = str(obj(entry).id);
+        const status = str(v.event);
+        if (wabaId && status) {
+          out.push({
+            kind: "template",
+            externalId: `tpl:${v.message_template_id}:${status}`,
+            phoneNumberId: "",
+            item: {
+              wabaId,
+              id: v.message_template_id === undefined ? null : String(v.message_template_id),
+              name: str(v.message_template_name),
+              language: str(v.message_template_language),
+              status,
+              reason: str(v.reason),
+            },
+          });
+        }
+        continue;
+      }
       if (c.field !== "messages") continue;
       const value = obj(c.value);
       const phoneNumberId = str(obj(value.metadata).phone_number_id);

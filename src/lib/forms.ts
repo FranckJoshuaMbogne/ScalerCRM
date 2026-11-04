@@ -110,6 +110,11 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (msg.includes("assignee cannot use the inbox")) return "That person's role doesn't include the inbox.";
   if (msg.includes("not allowed to assign conversations")) return "You can only take conversations yourself.";
   if (msg.includes("not allowed to reply")) return "You can't reply to this conversation.";
+  if (msg.includes("template is not approved")) return "The template isn't approved by WhatsApp yet.";
+  if (msg.includes("campaign was already launched")) return "This campaign has already been launched.";
+  if (msg.includes("template belongs to another WhatsApp account")) return "That template belongs to a different WhatsApp account than the sending number.";
+  if (msg.includes("every template variable needs a value")) return "Fill in every template variable, then save.";
+  if (/cannot \w+ a \w+ campaign/.test(msg)) return "That isn't possible in the campaign's current state.";
   if (error.code === "42501") return "You don't have permission to do that.";
   return msg || "Something went wrong. Try again.";
 }

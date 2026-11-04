@@ -73,6 +73,18 @@ describe("parseWebhook", () => {
   });
 });
 
+describe("template status webhooks", () => {
+  it("become template items keyed by WABA", () => {
+    const items = parseWebhook({
+      object: "whatsapp_business_account",
+      entry: [{ id: "700800900", changes: [{ field: "message_template_status_update",
+        value: { event: "REJECTED", message_template_id: 123, message_template_name: "diwali_offer", message_template_language: "en", reason: "INVALID_FORMAT" } }] }],
+    });
+    expect(items).toEqual([{ kind: "template", externalId: "tpl:123:REJECTED", phoneNumberId: "",
+      item: { wabaId: "700800900", id: "123", name: "diwali_offer", language: "en", status: "REJECTED", reason: "INVALID_FORMAT" } }]);
+  });
+});
+
 describe("24-hour window", () => {
   const now = new Date("2026-12-15T12:00:00Z");
   it("is open for a day after the customer's last message", () => {

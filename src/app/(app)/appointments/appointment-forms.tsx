@@ -126,6 +126,10 @@ export function WalkInForm({ branches, staff, defaultStaff, defaultBranch }: { b
         )}
         {staff.length > 1 && <SelectField label="Attended by" name="staffId" defaultValue={defaultStaff} options={staff} state={state} />}
         <TextAreaField label="Notes" name="notes" rows={2} className="sm:col-span-2" state={state} />
+        <label className="flex items-start gap-2 text-[13.5px] sm:col-span-2">
+          <input type="checkbox" name="whatsappOptIn" className="mt-1" />
+          <span>Customer agreed to receive offers on WhatsApp <span className="text-muted">(recorded as consent; they can reply STOP any time)</span></span>
+        </label>
       </div>
       <FormMessage state={state} />
       <div>

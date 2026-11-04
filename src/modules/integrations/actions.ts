@@ -1,6 +1,6 @@
 "use server";
 
-import { randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { type ActionState, friendlyDbError } from "@/lib/forms";
@@ -9,7 +9,10 @@ import { createClient } from "@/lib/supabase/server";
 import { guard } from "@/modules/tenancy/guard";
 import { requirePermission } from "@/modules/tenancy/session";
 import { embeddedSignupAvailable } from "./whatsapp/config";
+import { dialog360 } from "./whatsapp/dialog360";
 import { exchangeCode, metaCloud, registerNumber, subscribeApp } from "./whatsapp/meta-cloud";
+import { providerFor } from "./whatsapp/providers";
+import { siteOrigin } from "@/lib/origin";
 
 const digits = (label: string) => z.string().trim().regex(/^\d{5,30}$/, `${label} is the long number from Meta, digits only.`);
 
@@ -18,7 +21,7 @@ async function saveAccount(
   input: { wabaId: string; phoneNumberId: string; token: string; via: "manual" | "embedded_signup" },
 ): Promise<ActionState> {
   // Prove the token works for this number before storing anything.
-  const info = await metaCloud.getPhoneNumber(input.phoneNumberId, input.token);
+  const info = await metaCloud.getPhoneNumber({ phoneNumberId: input.phoneNumberId, wabaId: input.wabaId, token: input.token });
   if (!info.ok) return { ok: false, message: `Meta refused the details: ${info.error}` };
   const subscribed = await subscribeApp(input.wabaId, input.token);
 
@@ -96,7 +99,7 @@ export async function testConnection(_: ActionState, form: FormData): Promise<Ac
     const supabase = await createClient();
     const { data: account } = await supabase
       .from("whatsapp_accounts")
-      .select("id, phone_number_id")
+      .select("id, phone_number_id, waba_id, provider")
       .eq("id", id)
       .eq("business_id", ctx.business.businessId)
       .maybeSingle();
@@ -104,7 +107,11 @@ export async function testConnection(_: ActionState, form: FormData): Promise<Ac
     const admin = createAdminClient();
     const { data: token } = await admin.rpc("whatsapp_account_token", { p_account_id: id });
     if (!token) return { ok: false, message: "No token is stored for this number. Connect it again." };
-    const info = await metaCloud.getPhoneNumber(account.phone_number_id, String(token));
+    const info = await providerFor(account.provider).getPhoneNumber({
+      phoneNumberId: account.phone_number_id,
+      wabaId: account.waba_id,
+      token: String(token),
+    });
     await admin.rpc("record_whatsapp_check", {
       p_account_id: id,
       p_result: info.ok
@@ -127,5 +134,43 @@ export async function disconnectAccount(_: ActionState, form: FormData): Promise
     if (error) return { ok: false, message: friendlyDbError(error) };
     refresh();
     return { ok: true, message: "Disconnected. Conversations and history are kept." };
+  });
+}
+
+const d360Schema = z.object({
+  wabaId: digits("WhatsApp Business Account ID"),
+  apiKey: z.string().trim().min(20, "Paste the full 360dialog API key."),
+});
+
+/**
+ * 360dialog (BSP): the API key is stored like a Meta token. The webhook URL
+ * carries a random token (only its hash is kept), shown once to paste into 360dialog.
+ */
+export async function connectDialog360(_: ActionState, form: FormData): Promise<ActionState> {
+  return guard(async () => {
+    const ctx = await requirePermission("integrations.manage");
+    const parsed = d360Schema.safeParse(Object.fromEntries(form));
+    if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+    const check = await dialog360.getPhoneNumber({ phoneNumberId: null, wabaId: parsed.data.wabaId, token: parsed.data.apiKey });
+    if (!check.ok) return { ok: false, message: `360dialog refused the key: ${check.error}` };
+    const webhookToken = randomBytes(24).toString("base64url");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("connect_whatsapp_account", {
+      p_business_id: ctx.business.businessId,
+      p_input: {
+        provider: "dialog360",
+        waba_id: parsed.data.wabaId,
+        access_token: parsed.data.apiKey,
+        connected_via: "manual",
+        webhook_token_hash: createHash("sha256").update(webhookToken).digest("hex"),
+      },
+    });
+    if (error) return { ok: false, message: friendlyDbError(error) };
+    refresh();
+    return {
+      ok: true,
+      message: "Connected through 360dialog. Set this as the webhook URL in the 360dialog hub. It's shown only once:",
+      data: { link: `${await siteOrigin()}/api/webhooks/whatsapp/d360/${webhookToken}` },
+    };
   });
 }

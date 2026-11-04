@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 import { type ActionState, initialState } from "@/lib/forms";
-import { completeEmbeddedSignup, connectManually } from "@/modules/integrations/actions";
+import { completeEmbeddedSignup, connectDialog360, connectManually } from "@/modules/integrations/actions";
 
 type FB = {
   init(opts: Record<string, unknown>): void;
@@ -103,6 +103,25 @@ export function ManualConnect() {
       <FormMessage state={state} />
       <div>
         <SubmitButton variant="secondary" pendingLabel="Checking with Meta…">Connect number</SubmitButton>
+      </div>
+    </form>
+  );
+}
+
+export function Dialog360Connect() {
+  const [state, action] = useActionState(connectDialog360, initialState);
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="WhatsApp Business Account ID" name="wabaId" inputMode="numeric" autoComplete="off" required state={state} />
+        <Field label="360dialog API key" name="apiKey" type="password" autoComplete="off" required state={state} />
+      </div>
+      <FormMessage state={state} />
+      {state.ok && state.data?.link && (
+        <code className="block rounded-[var(--radius-control)] bg-paper px-3 py-2 text-[12.5px] break-all select-all">{state.data.link}</code>
+      )}
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Checking with 360dialog…">Connect through 360dialog</SubmitButton>
       </div>
     </form>
   );
