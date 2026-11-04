@@ -57,6 +57,12 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
   const reports = await runScheduledReports(origin).catch((e) => ({ error: e instanceof Error ? e.message : "reports failed" }));
   const push = await runPushes().catch((e) => ({ error: e instanceof Error ? e.message : "push failed" }));
   const { data: housekeeping } = await admin.rpc("housekeeping");
+  // Usage snapshot once a day (the first run after 18:30 UTC, midnight IST); safe to repeat.
+  const now = new Date();
+  const usageSnapshot =
+    now.getUTCHours() === 18 && now.getUTCMinutes() >= 30 && now.getUTCMinutes() < 35
+      ? (await admin.rpc("snapshot_usage")).data
+      : null;
 
   // Without email configured, queued reminders wait (and expire after a day).
   const mail = { sent: 0, failed: 0, skipped: !emailConfigured() };
@@ -77,5 +83,5 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
       }
     }
   }
-  return { jobs, mail, webhookRetries, campaigns, ads, automations, reports, push, housekeeping };
+  return { jobs, mail, webhookRetries, campaigns, ads, automations, reports, push, housekeeping, usageSnapshot };
 }

@@ -36,7 +36,10 @@ Record each run in the release checklist ([docs/release-checklist.md](../release
    - Both use the verify token in `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
    - App in **Live** mode, with business verification and app review complete (see SPRINTS.md).
 
-6. **Monitoring.** Follow [monitoring.md](monitoring.md): Sentry alert rules, an uptime check on `/api/health`, and who gets paged.
+6. **Platform admins.** Make the Springs 360 people who run the platform console admins. This is by hand, on purpose:
+   `update public.profiles set is_platform_admin = true where email in ('…');`
+   Keep the list short and review it each quarter.
+7. **Monitoring.** Follow [monitoring.md](monitoring.md): Sentry alert rules, an uptime check on `/api/health`, and who gets paged.
 
 ## Every release
 

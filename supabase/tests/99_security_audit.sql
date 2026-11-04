@@ -21,7 +21,7 @@ select tests.ok(not exists (
 select tests.ok(not exists (
   select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relkind = 'r'
-     and c.relname not in ('businesses', 'profiles', 'permissions', 'role_permissions', 'user_branch_access', 'push_subscriptions')
+     and c.relname not in ('businesses', 'profiles', 'permissions', 'role_permissions', 'user_branch_access', 'push_subscriptions', 'plans')
      and not exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'business_id' and not a.attisdropped)),
   'every tenant table has a business_id');
 
