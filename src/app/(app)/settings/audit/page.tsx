@@ -33,6 +33,9 @@ const ENTITY: Record<string, string> = {
   lead_forms: "a lead form mapping",
   ad_accounts: "an ad account",
   attribution_settings: "the attribution policy",
+  billing_profiles: "the billing details",
+  subscription: "the subscription",
+  support_access: "SCALER support access",
 };
 
 const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted", export: "exported", import: "imported" };

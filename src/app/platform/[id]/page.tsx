@@ -9,6 +9,7 @@ import { LIMITS, usageRows } from "@/modules/plans/limits";
 import { getPlatformBusiness, requirePlatformAdmin } from "@/modules/plans/platform";
 import { setBusinessPlan, setBusinessStatus } from "@/modules/plans/platform-actions";
 import { listPlans } from "@/modules/plans/queries";
+import { getBusinessBilling } from "@/modules/billing/platform";
 
 export const metadata = { title: "Business" };
 
@@ -17,6 +18,16 @@ export default async function PlatformBusinessPage(props: PageProps<"/platform/[
   const { id } = await props.params;
   const [b, plans] = await Promise.all([getPlatformBusiness(id), listPlans()]);
   if (!b) notFound();
+  const billing = await getBusinessBilling(id);
+  const sub = billing.subscription as {
+    status?: string;
+    plan_key?: string;
+    billing_interval?: string;
+    current_period_end?: string;
+    provider?: string;
+    live?: boolean;
+    grace_ends_at?: string;
+  } | null;
   const tz = "Asia/Kolkata";
 
   return (
@@ -104,6 +115,39 @@ export default async function PlatformBusinessPage(props: PageProps<"/platform/[
               </li>
             ))}
           </ul>
+        </Panel>
+
+        <Panel className="p-5">
+          <h2 className="mb-3 text-[15px] font-semibold">Billing</h2>
+          {sub ? (
+            <p className="mb-3 text-[13.5px]">
+              <span className="font-medium">{sub.status?.replace("_", " ")}</span>
+              {sub.plan_key ? ` · ${sub.plan_key}, ${sub.billing_interval ?? ""}` : ""}
+              {sub.provider ? ` · ${sub.provider}${sub.live ? "" : " (test)"}` : ""}
+              {sub.current_period_end ? ` · renews ${formatDateTime(sub.current_period_end, tz)}` : ""}
+              {sub.grace_ends_at ? ` · grace until ${formatDateTime(sub.grace_ends_at, tz)}` : ""}
+            </p>
+          ) : (
+            <p className="mb-3 text-[13.5px] text-muted">No subscription: billed by hand.</p>
+          )}
+          <ul className="mb-3 space-y-1 text-[13.5px]">
+            {billing.history.map((h) => (
+              <li key={h.created_at + h.to_status}>
+                {h.from_status ?? "—"} → <span className="font-medium">{h.to_status}</span>{" "}
+                <span className="text-muted">
+                  · {h.reason} · {formatDateTime(h.created_at, tz)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {billing.invoices.length > 0 && (
+            <p className="text-[13.5px] text-muted">
+              Invoices: {billing.invoices.map((i) => `${i.number} (${i.total}${i.test_mode ? ", test" : ""})`).join(", ")}
+            </p>
+          )}
+          {billing.events.some((e) => e.error) && (
+            <p className="mt-2 text-[13.5px] text-danger">Some webhooks for this business were not applied. See Platform → Billing.</p>
+          )}
         </Panel>
 
         <Panel className="p-5">

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ActionForm } from "@/components/ui/action-form";
 import { SelectField, SubmitButton } from "@/components/ui/form";
 import { NoAccess } from "@/components/ui/no-access";
-import { PageHeader, Panel } from "@/components/ui/primitives";
+import { linkButton, PageHeader, Panel } from "@/components/ui/primitives";
 import { UsageBars } from "@/components/ui/usage-bars";
 import { formatDateTime } from "@/lib/format";
 import { grantSupportAccess, revokeSupportAccess } from "@/modules/plans/actions";
@@ -25,7 +25,14 @@ export default async function PlanPage() {
       </Link>
       <PageHeader
         title="Plan and usage"
-        description="What your plan includes and how much of it you're using. To change plan, contact Springs 360."
+        description="What your plan includes and how much of it you're using."
+        actions={
+          can(ctx, "billing.manage") ? (
+            <Link href="/settings/billing" className={linkButton.primary}>
+              Change plan or pay
+            </Link>
+          ) : undefined
+        }
       />
 
       <Panel className="mb-6 p-5">

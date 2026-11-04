@@ -1,4 +1,5 @@
 /** Transactional email templates. Pure: payload in, subject/html/text out. */
+import { billingEmail } from "@/modules/billing/emails";
 
 export type RenderedEmail = { subject: string; html: string; text: string };
 
@@ -16,12 +17,12 @@ export function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-function str(v: unknown) {
+export function str(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
 }
 
 /** Plain, single-column layout that renders the same in every mail client. */
-function layout(title: string, lines: string[], action: { label: string; url: string }, footer: string) {
+export function layout(title: string, lines: string[], action: { label: string; url: string }, footer: string) {
   const body = lines.map((l) => `<p style="margin:0 0 12px">${l}</p>`).join("");
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#f6f5f2;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1b1b1f">
 <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e6e3dc;border-radius:10px;padding:24px">
@@ -154,6 +155,6 @@ export function renderOutboxEmail(template: string, payload: Record<string, unkn
     case "appointment_reminder":
       return appointmentReminderEmail(payload, origin);
     default:
-      return null;
+      return template.startsWith("billing_") ? billingEmail(template, payload, origin) : null;
   }
 }

@@ -21,7 +21,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Business details, plan and usage, branches, pipeline, orders, lead assignment, custom fields, API keys and data import."
+        description="Business details, plan and usage, billing, branches, pipeline, orders, lead assignment, custom fields, API keys and data import."
         actions={
           <>
             {can(ctx, "settings.pipeline.manage") && (
@@ -52,6 +52,11 @@ export default async function SettingsPage() {
             {manageBusiness && (
               <Link href="/settings/plan" className={linkButton.secondary}>
                 Plan and usage
+              </Link>
+            )}
+            {can(ctx, "billing.manage") && (
+              <Link href="/settings/billing" className={linkButton.secondary}>
+                Billing
               </Link>
             )}
             {can(ctx, "data.import") && (

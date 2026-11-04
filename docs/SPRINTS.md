@@ -211,6 +211,7 @@
 
 ## Sprint 11 — Subscription billing
 **Goal:** businesses pay for SCALER every month or year without anyone chasing them.
+**Status:** built on branch `sprint-11/subscription-billing`. Decisions in [ADR 0012](adr/0012-subscription-billing.md). Razorpay runs in test mode; development and previews use a test provider that moves no money. Live payments wait for Razorpay live keys, plan prices and Springs 360's GSTIN (until then every invoice is a test invoice). The invoice PDF is the browser's "Save as PDF", as for reports.
 
 - Payment provider adapter in `src/modules/billing`. Razorpay Subscriptions is the default (UPI autopay, cards, net banking, e-mandates); Stripe follows when SCALER sells outside India.
 - Checkout from the plan page. Upgrades take effect at once (prorated); downgrades take effect at renewal, after checking the business fits the lower limits.

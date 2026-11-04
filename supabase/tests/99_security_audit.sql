@@ -69,7 +69,8 @@ select tests.ok(not exists (
      and p.proname in ('claim_emails', 'finish_email', 'pending_webhook_events', 'record_webhook_event', 'finish_webhook_event',
                        'whatsapp_account_token', 'integration_token', 'claim_campaign_batch', 'claim_automation_runs',
                        'step_automation_run', 'claim_report_schedules', 'claim_push_batch', 'record_job_heartbeat',
-                       'housekeeping', 'run_task_jobs')
+                       'housekeeping', 'run_task_jobs', 'billing_ingest', 'billing_tick', 'billing_save_provider_plan',
+                       'snapshot_usage')
      and has_function_privilege('authenticated', p.oid, 'execute')),
   'background-job functions are reserved for the service role');
 

@@ -17,6 +17,9 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
           <Link href="/platform/plans" className="hover:underline">
             Plans
           </Link>
+          <Link href="/platform/billing" className="hover:underline">
+            Billing
+          </Link>
           <Link href="/dashboard" className="text-white/70 hover:underline">
             Back to the app
           </Link>

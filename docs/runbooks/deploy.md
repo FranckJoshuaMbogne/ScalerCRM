@@ -40,6 +40,12 @@ Record each run in the release checklist ([docs/release-checklist.md](../release
    `update public.profiles set is_platform_admin = true where email in ('…');`
    Keep the list short and review it each quarter.
 7. **Monitoring.** Follow [monitoring.md](monitoring.md): Sentry alert rules, an uptime check on `/api/health`, and who gets paged.
+8. **Billing (Sprint 11, ADR 0012).**
+   - In Platform → Billing, enter Springs 360's legal name, GSTIN, address and invoice prefix. Until then every invoice is a test invoice.
+   - In Platform → Plans, set the monthly and yearly prices (before GST).
+   - In the Razorpay dashboard, enable Subscriptions and add the webhook `https://app.<domain>/api/webhooks/billing/razorpay` with the events listed in `.env.example`. Set `RAZORPAY_WEBHOOK_SECRET` to its secret.
+   - Run the whole lifecycle with `rzp_test_` keys on a preview first: subscribe, renew, fail a renewal, let grace run out, pay again, cancel.
+   - Switch to `rzp_live_` keys only after Springs 360's GST registration is entered. Reconcile the first settlement report in Platform → Billing.
 
 ## Every release
 

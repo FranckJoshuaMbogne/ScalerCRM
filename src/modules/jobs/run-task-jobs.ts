@@ -57,6 +57,8 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
   const reports = await runScheduledReports(origin).catch((e) => ({ error: e instanceof Error ? e.message : "reports failed" }));
   const push = await runPushes().catch((e) => ({ error: e instanceof Error ? e.message : "push failed" }));
   const { data: housekeeping } = await admin.rpc("housekeeping");
+  // Trials ending, grace running out and reminders. Cheap; safe every run.
+  const { data: billing, error: billingError } = await admin.rpc("billing_tick");
   // Usage snapshot once a day (the first run after 18:30 UTC, midnight IST); safe to repeat.
   const now = new Date();
   const usageSnapshot =
@@ -83,5 +85,17 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
       }
     }
   }
-  return { jobs, mail, webhookRetries, campaigns, ads, automations, reports, push, housekeeping, usageSnapshot };
+  return {
+    jobs,
+    mail,
+    webhookRetries,
+    campaigns,
+    ads,
+    automations,
+    reports,
+    push,
+    housekeeping,
+    usageSnapshot,
+    billing: billingError ? { error: billingError.message } : billing,
+  };
 }

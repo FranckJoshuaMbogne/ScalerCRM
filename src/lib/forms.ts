@@ -49,6 +49,13 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (limit) return limit;
   if (msg.includes("support access lasts")) return "Support access can last from 1 to 72 hours.";
   if (msg.includes("platform admins only")) return "Only SCALER platform admins can do that.";
+  if (msg.includes("plan not on sale")) return "That plan isn't available to buy online. Contact Springs 360.";
+  if (msg.includes("plan too small"))
+    return "Your business uses more than that plan allows. Remove what's over the limit first, or choose a bigger plan.";
+  if (msg.includes("billing details needed")) return "Add your billing details first. They're printed on your invoices.";
+  if (msg.includes("already subscribed")) return "You already have a subscription. Change plan instead.";
+  if (msg.includes("no subscription to cancel")) return "There's no active subscription to cancel.";
+  if (msg.includes("not allowed to manage billing")) return "Only people with billing access can do that.";
   if (msg.includes("a reason is required")) return "Add a short reason. It's kept in the business's history.";
   if (msg.includes("at least one active business admin"))
     return "Every business needs at least one active business admin. Make someone else an admin first.";
