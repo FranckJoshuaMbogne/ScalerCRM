@@ -2,6 +2,7 @@ import "server-only";
 import type { CountryCode } from "libphonenumber-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalisePhone } from "@/modules/crm/phone";
+import { processLeadEvent } from "@/modules/integrations/leads/process";
 import { providerFor } from "./providers";
 import type { InboundMessage, StatusUpdate, WebhookItem } from "./webhook";
 
@@ -89,7 +90,10 @@ export async function retryPendingEvents(admin: Admin) {
   const { data, error } = await admin.rpc("pending_webhook_events", { p_limit: 50 });
   if (error) throw new Error(`pending_webhook_events failed: ${error.message}`);
   const rows = (data ?? []) as { id: number; kind: string; payload: unknown }[];
-  for (const r of rows) await processEvent(admin, r.id, r.kind, r.payload);
+  for (const r of rows) {
+    if (r.kind === "leadgen") await processLeadEvent(admin, r.id);
+    else await processEvent(admin, r.id, r.kind, r.payload);
+  }
   return rows.length;
 }
 

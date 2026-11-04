@@ -133,6 +133,7 @@
 
 ## Sprint 7 — Meta, Google & attribution
 **Goal:** paid acquisition flows in automatically and is attributed correctly.
+**Status:** built on branch `sprint-7/meta-google-attribution`. Decisions in [ADR 0008](adr/0008-ads-and-attribution.md). Instagram/Messenger direct messages wait for Meta app review (`instagram_manage_messages`, `pages_messaging`); Instagram Lead Ads work now. Google Ads spend needs a developer token and OAuth client.
 
 - Meta Lead Ads: page subscription, leadgen webhook, Graph fetch, form-field mapping UI
 - Instagram / Messenger enquiries where permissions allow

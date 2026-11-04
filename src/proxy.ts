@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 /** Routes reachable without signing in. */
 // /api/cron checks its own bearer secret; /api/webhooks checks provider signatures.
-const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/invite", "/api/v1", "/api/cron", "/api/webhooks"];
+const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/invite", "/api/v1", "/api/cron", "/api/webhooks", "/scaler-touch.js"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

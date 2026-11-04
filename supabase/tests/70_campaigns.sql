@@ -100,7 +100,9 @@ select tests.ok((select array_agg(params ->> 0 order by phone) = array['Ravi', '
 select tests.affects_none(format('update public.campaigns set name = %L where id = %L', 'x', :'camp'), 'a launched campaign cannot be edited');
 reset role;
 
--- Send queue: throttled to 1 per minute.
+-- Send queue: throttled to 1 per minute. Hold Priya back so Ravi goes first (claim order is otherwise by id).
+update public.campaign_recipients set next_attempt_at = now() + interval '1 minute'
+ where campaign_id = :'camp' and customer_id = :'c5';
 set role service_role;
 select count(*) as claimed1 from public.claim_campaign_batch(100, 1) \gset
 reset role;
