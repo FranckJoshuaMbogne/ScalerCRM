@@ -32,7 +32,7 @@ export async function getBusinessProfile(businessId: string): Promise<BusinessPr
 
 export type AuditEntry = {
   id: number;
-  action: "insert" | "update" | "delete" | "export";
+  action: "insert" | "update" | "delete" | "export" | "import";
   entityType: string;
   entityId: string | null;
   actorName: string;

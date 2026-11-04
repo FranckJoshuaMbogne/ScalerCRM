@@ -5,7 +5,7 @@ import { parseLeadPayload, readApiKey, requestHash } from "./lead-payload";
 
 const MAX_BODY_BYTES = 64 * 1024;
 
-type Result = { status: number; body: Record<string, unknown> };
+type Result = { status: number; body: Record<string, unknown>; headers?: Record<string, string> };
 
 const fail = (status: number, error: string, details?: Record<string, string>): Result => ({
   status,
@@ -34,6 +34,10 @@ export async function submitLead(request: Request): Promise<Result> {
   if (!body || typeof body !== "object" || Array.isArray(body)) return fail(400, "body_must_be_an_object");
 
   const supabase = createAnonClient();
+  // 120 submissions a minute per key; a form flood can't fill the CRM.
+  const { data: allowed } = await supabase.rpc("api_rate_limit", { p_api_key: apiKey });
+  if (allowed === false) return { ...fail(429, "rate_limited"), headers: { "retry-after": "60" } };
+
   const { data: business, error: keyError } = await supabase.rpc("api_key_business", { p_api_key: apiKey }).maybeSingle();
   if (keyError) return fail(500, "internal_error");
   if (!business) return fail(401, "invalid_api_key");

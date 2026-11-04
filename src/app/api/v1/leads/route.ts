@@ -9,5 +9,5 @@ import { submitLead } from "@/modules/api/submit-lead";
  */
 export async function POST(request: Request) {
   const result = await submitLead(request);
-  return Response.json(result.body, { status: result.status, headers: { "cache-control": "no-store" } });
+  return Response.json(result.body, { status: result.status, headers: { "cache-control": "no-store", ...result.headers } });
 }

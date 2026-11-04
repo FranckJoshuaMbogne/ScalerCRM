@@ -168,6 +168,7 @@
 - Staff training material; production deploy
 
 **Acceptance:** PRD M6 and the v1.0 release checklist (19 items) complete.
+**Status:** built on branch `sprint-9/hardening-go-live`. Decisions in [ADR 0010](adr/0010-hardening-and-go-live.md). The production deploy, backups, restore drill and MY PERFECT FIT import are written as runbooks and scripts (`docs/runbooks`, `scripts/`), for a person to carry out. The [release checklist](release-checklist.md) is the go-live record. PRD M6 wasn't in the repo, so its 19 items are reconstructed from this sprint's scope.
 
 ## After v1.0 (Phase 4 — SaaS expansion)
 Subscription billing, plan limits, self-serve onboarding, white-label, public API & webhooks, visual workflow editor, multi-branch advanced reporting.

@@ -3,7 +3,11 @@ import { type NextRequest, NextResponse } from "next/server";
 
 /** Routes reachable without signing in. */
 // /api/cron checks its own bearer secret; /api/webhooks checks provider signatures.
-const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/invite", "/api/v1", "/api/cron", "/api/webhooks", "/scaler-touch.js"];
+// /offline and /sw.js must load without a session (the service worker installs them).
+const PUBLIC_PREFIXES = [
+  "/login", "/signup", "/auth", "/invite", "/offline", "/sw.js",
+  "/api/v1", "/api/cron", "/api/webhooks", "/api/health", "/scaler-touch.js",
+];
 
 function isPublic(pathname: string) {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -37,6 +41,8 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (!signedIn && !isPublic(pathname)) {
+    // APIs answer 401 instead of redirecting, so the service worker never caches the login page.
+    if (pathname.startsWith("/api/")) return NextResponse.json({ error: "signed_out" }, { status: 401 });
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname + search)}`;

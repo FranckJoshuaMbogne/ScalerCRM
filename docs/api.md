@@ -50,6 +50,7 @@ API leads start in the default stage with no owner. If round-robin is on (Settin
 | `409` | `idempotency_key_reused`: same key, different body |
 | `413` / `415` / `400` | Body too large / not JSON / malformed |
 | `422` | `invalid_lead` with `details`, e.g. `{ "phone": "phone is not a valid number" }` |
+| `429` | `rate_limited`: more than 120 submissions in a minute with one key. Wait for the `Retry-After` seconds and send again with the same `Idempotency-Key`. |
 
 ## Website tracking snippet
 

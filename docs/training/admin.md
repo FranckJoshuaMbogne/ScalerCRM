@@ -1,0 +1,38 @@
+# SCALER for business admins
+
+## 1. Your team
+- **Team → Invite.** Pick a role. Sales executives see only their own leads and customers; managers see their branches. Give access to only the branches a person works in.
+- **Roles.** The built-in roles fit most shops. Create a custom role under Team → Roles when one doesn't. Every switch is one permission, and it applies everywhere, including exports.
+- **Someone leaves:** remove them from Team the same day. Reassign their open leads first: filter the lead list by their name and give each lead a new owner.
+
+## 2. Settings to check once
+- **Pipeline:**
+  - stage names your team uses;
+  - which stages need an owner;
+  - lost reasons;
+  - sources.
+- **Lead assignment:** round-robin per branch, and who is in the rotation.
+- **Orders:** fulfilment stages, catalogue, measurement templates.
+- **Custom fields:** only what you'll actually report on.
+
+## 3. Bringing in old data (Settings → Import data)
+1. Download the template for customers, leads or orders.
+2. Put your data under its headings. Dates as DD/MM/YYYY, amounts as numbers (₹ and commas are fine).
+3. **Check file** first. Fix the listed rows in your spreadsheet, not in SCALER, then check again.
+4. **Import.** Do customers first, then leads, then orders. Importing the same file twice is safe.
+
+## 4. Integrations
+- **WhatsApp:**
+  - connect your number;
+  - write templates for anything sent after 24 hours of silence;
+  - watch the number's quality on the Integrations page.
+- **Meta Lead Ads and Google lead forms:** connect once. New leads arrive with their campaign.
+- **Website:** the API key and the tracking snippet are in Settings → API keys.
+
+## 5. Automations
+Six ready-made automations are switched off at first. Turn on "Call new leads within 15 minutes" and "Chase quiet leads" in week one. Add others once the team trusts them. The run log on each automation shows what it did and why it skipped.
+
+## 6. Keeping an eye
+- **Analytics:** the executive tab every morning. Sales tab: salespeople compared fairly, adjusted for the leads they got.
+- **Audit log:** every settings change, export and import. You get a notification when someone exports 1,000 rows or more.
+- **Exports** are limited to 20 an hour per person. That's enough for real work, and slows down anyone copying the database.
