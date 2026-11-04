@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { emailConfigured, sendEmail } from "@/modules/email/send";
 import { renderOutboxEmail } from "@/modules/email/templates";
 import { runCampaigns } from "@/modules/campaigns/worker";
+import { runAdSync } from "@/modules/integrations/ads/sync";
 import { retryPendingEvents } from "@/modules/integrations/whatsapp/ingest";
 
 /** True when the request carries `Authorization: Bearer $CRON_SECRET`. */
@@ -27,6 +28,7 @@ export async function runTaskJobs(origin: string) {
   if (error) throw new Error(`run_task_jobs failed: ${error.message}`);
   const webhookRetries = await retryPendingEvents(admin);
   const campaigns = await runCampaigns();
+  const ads = await runAdSync().catch((e) => ({ error: e instanceof Error ? e.message : "ad sync failed" }));
 
   // Without email configured, queued reminders wait (and expire after a day).
   const mail = { sent: 0, failed: 0, skipped: !emailConfigured() };
@@ -47,5 +49,5 @@ export async function runTaskJobs(origin: string) {
       }
     }
   }
-  return { jobs, mail, webhookRetries, campaigns };
+  return { jobs, mail, webhookRetries, campaigns, ads };
 }

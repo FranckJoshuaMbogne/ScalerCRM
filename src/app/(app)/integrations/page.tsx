@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { disconnectAccount, testConnection } from "@/modules/integrations/actions";
 import { embeddedSignupAvailable, metaConfig } from "@/modules/integrations/whatsapp/config";
 import { can, getContext } from "@/modules/tenancy/session";
+import Link from "next/link";
+import { AdsSections } from "./ads-sections";
 import { Dialog360Connect, EmbeddedSignup, ManualConnect } from "./whatsapp-connect";
 
 export const metadata = { title: "Integrations" };
@@ -33,7 +35,11 @@ export default async function IntegrationsPage() {
 
   return (
     <>
-      <PageHeader title="Integrations" description="Connect the channels leads come from. Meta and Google lead forms follow in Sprint 7." />
+      <PageHeader
+        title="Integrations"
+        description="Connect the channels leads come from, and see whether each one is healthy."
+        actions={<Link href="/analytics/attribution" className="inline-flex h-9 items-center rounded-[var(--radius-control)] border border-line bg-surface px-3.5 text-[13.5px] font-medium hover:bg-paper">Attribution report</Link>}
+      />
 
       <Panel className="mb-6">
         <div className="border-b border-line px-5 py-3.5">
@@ -119,6 +125,7 @@ export default async function IntegrationsPage() {
           </details>
         </div>
       </Panel>
+      <AdsSections businessId={businessId} tz={tz} />
     </>
   );
 }

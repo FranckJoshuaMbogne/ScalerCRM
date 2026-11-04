@@ -7,6 +7,8 @@ import { NoAccess } from "@/components/ui/no-access";
 import { EmptyState, linkButton, PageHeader, Panel } from "@/components/ui/primitives";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { listOrderAppointments } from "@/modules/appointments/queries";
+import { listTouchpoints } from "@/modules/attribution/queries";
+import { listSources } from "@/modules/leads/config";
 import { formatCustomValue } from "@/modules/custom-fields/engine";
 import { listFieldDefinitions } from "@/modules/custom-fields/queries";
 import { getCustomer } from "@/modules/customers/queries";
@@ -33,6 +35,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
   const order = await getOrder(id, can(ctx, "payments.view"));
   if (!order) notFound();
 
+  const [touchpoints, sources] = await Promise.all([listTouchpoints(order.customerId, order.createdAt), listSources(businessId)]);
+  const sourceName = new Map(sources.map((s) => [s.id, s.name]));
   const [stages, customer, members, branches, fields, appointments, editor] = await Promise.all([
     listOrderStages(businessId),
     getCustomer(order.customerId),
@@ -235,6 +239,28 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
                 {order.leadId && <Link href={`/leads/${order.leadId}`} className="text-signal hover:underline">Lead</Link>}
                 {order.quotationId && <Link href={`/orders/quotations/${order.quotationId}`} className="text-signal hover:underline">Quotation</Link>}
               </p>
+            </Panel>
+          )}
+
+          {touchpoints.length > 0 && (
+            <Panel className="p-5 text-[13.5px]">
+              <p className="mb-2 text-[12.5px] font-medium text-muted">How they found us</p>
+              <ol className="flex flex-col gap-2">
+                {touchpoints.map((t, i) => (
+                  <li key={t.id}>
+                    <p>
+                      <span className="font-medium">{(t.sourceId && sourceName.get(t.sourceId)) ?? t.utmSource ?? "Unknown source"}</span>
+                      {i === 0 && <span className="text-muted"> · first touch</span>}
+                      {i === touchpoints.length - 1 && i > 0 && <span className="text-muted"> · last touch</span>}
+                    </p>
+                    <p className="text-[12.5px] text-muted">
+                      {[t.campaign, t.adId && `ad ${t.adId}`, t.gclid && "Google click", t.fbclid && "Meta click"].filter(Boolean).join(" · ") || "No campaign"}
+                      {" · "}
+                      <Link href={`/leads/${t.leadId}`} className="hover:text-signal">{formatDate(t.occurredAt, tz)}</Link>
+                    </p>
+                  </li>
+                ))}
+              </ol>
             </Panel>
           )}
 

@@ -50,3 +50,27 @@ API leads start in the default stage with no owner. If round-robin is on (Settin
 | `409` | `idempotency_key_reused`: same key, different body |
 | `413` / `415` / `400` | Body too large / not JSON / malformed |
 | `422` | `invalid_lead` with `details`, e.g. `{ "phone": "phone is not a valid number" }` |
+
+## Website tracking snippet
+
+Add to every page of the website:
+
+```html
+<script src="https://<your-scaler-domain>/scaler-touch.js" async></script>
+```
+
+It keeps the visitor's UTM tags, `gclid`, `fbclid`, landing page and referrer for 90 days in a first-party cookie, and nothing is sent anywhere by the script itself. When the website posts a lead, include the touch:
+
+```js
+fetch("/your-server/lead", { method: "POST", body: JSON.stringify({ ...formFields, ...window.scalerTouch() }) });
+```
+
+Your server forwards those fields to `POST /api/v1/leads` (they are the touch fields listed above). Plain HTML forms also get hidden `scaler_utm_source`, `scaler_gclid`, … inputs added automatically.
+
+## Meta Lead Ads and Google Ads lead forms
+
+These don't use this API. Connect them under Integrations:
+- **Meta:** subscribe the Page product's `leadgen` field to `/api/webhooks/meta/leadgen`.
+- **Google:** paste the generated webhook URL and key into the lead form.
+
+Leads from both keep their campaign, ad set or ad group, ad and form IDs, and `gclid` for Google.
