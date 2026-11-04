@@ -171,7 +171,134 @@
 **Status:** built on branch `sprint-9/hardening-go-live`. Decisions in [ADR 0010](adr/0010-hardening-and-go-live.md). The production deploy, backups, restore drill and MY PERFECT FIT import are written as runbooks and scripts (`docs/runbooks`, `scripts/`), for a person to carry out. The [release checklist](release-checklist.md) is the go-live record. PRD M6 wasn't in the repo, so its 19 items are reconstructed from this sprint's scope.
 
 ## After v1.0 (Phase 4 — SaaS expansion)
-Subscription billing, plan limits, self-serve onboarding, white-label, public API & webhooks, visual workflow editor, multi-branch advanced reporting.
+**Goal:** businesses other than MY PERFECT FIT can find SCALER, sign up, pay and run it without Springs 360 setting them up by hand.
+**Status:** planned, waiting for approval. Nothing below is built yet. Sprint 10 starts when MY PERFECT FIT has been live for two weeks without a priority-one issue.
+
+| # | Sprint | Dates (2027) | Demo at sprint review |
+|---|--------|--------------|------------------------|
+| 10 | Plans, limits & platform console | 5 Apr – 18 Apr | Springs 360 changes a business's plan; a Starter business hits its user limit with a clear message |
+| 11 | Subscription billing | 19 Apr – 2 May | Trial → pay by UPI autopay/card → GST invoice → failed renewal → grace period → read-only |
+| 12 | Self-serve onboarding | 3 May – 16 May | A stranger signs up, picks their industry, invites staff, connects WhatsApp and imports customers in under 30 minutes |
+| 13 | Public API & outbound webhooks | 17 May – 30 May | A partner reads and writes leads with a scoped key; SCALER pushes signed `order.stage_changed` events |
+| 14 | Visual workflow editor | 31 May – 13 Jun | Build "no-show → wait 1 day → if no reply → task, else tag" on a canvas; dry-run it on a real lead |
+| 15 | Multi-branch reporting & targets | 14 Jun – 27 Jun | Branch comparison, monthly targets per branch and person, leaderboard, weekly report pack |
+| 16 | White-label | 28 Jun – 11 Jul | A reseller's tenant on `crm.theirbrand.in` with their logo, colours, sender address and installable app name |
+
+## Sprint 10 — Plans, limits & platform console
+**Goal:** SCALER knows what each business is entitled to, and Springs 360 can manage businesses without SQL.
+
+- Plan catalogue: `plans` with limits, `business_plan_history` (append-only). Limits cover:
+  - active users;
+  - branches;
+  - WhatsApp numbers;
+  - campaign messages a month;
+  - automations;
+  - API calls a day;
+  - storage.
+- Limits enforced in Postgres where the row is created (the same place as permissions), not only in the UI. Messages say what limit was hit and how to raise it.
+- Usage meters: a daily snapshot per business, plus a live count for limits that move fast (messages, API calls).
+- Platform console (`/platform`, platform admins only, every action audited):
+  - businesses, usage and plan;
+  - change plan;
+  - extend a trial;
+  - suspend or reactivate a business;
+  - see integration health across tenants.
+- Support access: a platform admin opens a business read-only, for a limited time, with the business admin's consent recorded and shown to them.
+- MY PERFECT FIT moved onto a plan with its current usage grandfathered.
+
+**Acceptance:** a SQL test per limit proves it can't be bypassed through any RPC. A suspended business can sign in and export but not change data.
+
+## Sprint 11 — Subscription billing
+**Goal:** businesses pay for SCALER every month or year without anyone chasing them.
+
+- Payment provider adapter in `src/modules/billing`. Razorpay Subscriptions is the default (UPI autopay, cards, net banking, e-mandates); Stripe follows when SCALER sells outside India.
+- Checkout from the plan page. Upgrades take effect at once (prorated); downgrades take effect at renewal, after checking the business fits the lower limits.
+- Provider webhooks (signed, idempotent, append-only `billing_events`) drive the subscription state: trialing → active → past_due → grace → read-only → cancelled.
+- GST-compliant invoices: GSTIN capture, place of supply, CGST/SGST vs IGST, sequential invoice numbers per financial year, PDF and email.
+- Dunning: reminder emails and in-app banners on failed renewals; 7-day grace before read-only. Nothing is ever deleted for non-payment within 90 days.
+- Billing page: plan, next charge, invoices, payment method, cancel.
+
+**Acceptance:** every state transition is covered by webhook replay tests. Invoices reconcile with provider settlements. A business in read-only mode can still pay and export.
+
+## Sprint 12 — Self-serve onboarding
+**Goal:** a new business is working in SCALER on day one without a call.
+
+- Public sign-up with email verification, then a 14-day trial on the Growth plan.
+- Setup wizard, resumable, under 10 steps:
+  - business profile;
+  - industry template (tailoring, salon, clinic, real estate, retail): pipeline stages, sources, lost reasons, order stages, measurement or custom-field sets, ready-made automations;
+  - branches;
+  - invite team;
+  - connect WhatsApp (Embedded Signup);
+  - import customers (Sprint 9 importer);
+  - install the app.
+- Optional sample data in a separate demo business, removable in one click.
+- In-app getting-started checklist and empty states that link to the next step.
+- Activation tracking: time to first lead, first WhatsApp reply and first order, per signup, on the platform console.
+- Abuse controls: disposable-email block, sign-up rate limits, manual review queue for new WhatsApp connections on trial.
+
+**Acceptance:** five people outside Springs 360 complete onboarding unaided in under 30 minutes, timed. Every industry template passes the pipeline rules tests.
+
+## Sprint 13 — Public API & outbound webhooks
+**Goal:** partners and the businesses' own developers can build on SCALER safely.
+
+- Scoped API keys (`leads:read`, `leads:write`, `customers:read`, `orders:read`, `orders:write`, `tasks:write`, `webhooks:manage`), hashed and revocable, with a last-used time. The Sprint 2 keys become `leads:write` keys.
+- REST `/api/v1` for customers, leads, orders, payments (read), tasks:
+  - cursor pagination;
+  - filtering by `updated_since`;
+  - idempotency keys on every write;
+  - the same RLS-backed functions as the app.
+- Rate limits per plan (Sprint 9 limiter), with `X-RateLimit-*` headers.
+- Outbound webhooks: subscriptions per event type (`lead.created`, `lead.stage_changed`, `order.created`, `order.stage_changed`, `payment.recorded`, `customer.merged`).
+  - Events are written by triggers to an outbox, sent by the job route, and signed (HMAC-SHA256 with a timestamp).
+  - Retries with back-off for 24 hours; a delivery log with replay; auto-disable after repeated failure, with an email to the admin.
+- OpenAPI 3.1 document generated from the zod schemas; reference docs page; Postman collection.
+
+**Acceptance:** contract tests against the OpenAPI document. A key can never read outside its business or scopes (SQL tests). Webhook signatures verify with the published sample code.
+
+## Sprint 14 — Visual workflow editor
+**Goal:** business admins build their own automations without a list of steps.
+
+- Canvas editor (React Flow) over the Sprint 8 engine. The stored format becomes a graph, and existing linear automations convert automatically.
+- New steps:
+  - if/else branches on lead, customer, order or message conditions;
+  - wait until (time of day, business hours);
+  - wait for a reply (with timeout);
+  - send email;
+  - update a custom field;
+  - call a webhook (Sprint 13).
+- Dry run: pick a real lead and see which path it would take and what each step would do, without doing it.
+- Versions: publishing creates a new version. Running instances finish on the version they started on. Roll back to an earlier version.
+- Per-step analytics: how many runs reached each step, conversion after each branch, failures.
+- Guard-rails:
+  - loop detection;
+  - a step limit per run;
+  - automation sends count against the plan's message limit (Sprint 10).
+
+**Acceptance:** all six Sprint 8 presets rebuilt on the canvas behave identically (same SQL tests). Dry runs never write.
+
+## Sprint 15 — Multi-branch reporting & targets
+**Goal:** owners with several branches compare them fairly and manage to targets.
+
+- Branch comparison: every Sprint 8 metric side by side per branch, with cohort rules and source-mix normalisation (as for salespeople).
+- Targets: monthly and quarterly targets per branch and per person (leads handled, conversions, revenue, collections), with progress on the dashboard and My day.
+- Leaderboards (opt-in per business) and team-level PIC reports for branch managers.
+- Lead transfers between branches tracked and reported (who sent, who closed, time to close).
+- Report packs: a scheduled weekly or monthly PDF/CSV bundle per role (owner, branch manager, marketing), built on the Sprint 8 scheduler.
+- Performance: materialised daily rollups for history older than 90 days, so 12-month views stay under the Sprint 9 budgets at 1M leads.
+
+**Acceptance:** branch totals reconcile with business totals. The load test is extended to 1M leads across 10 branches, with every query within budget.
+
+## Sprint 16 — White-label
+**Goal:** resellers and larger brands run SCALER under their own name.
+
+- Brand settings per business (or per reseller account): logo, colours (checked for contrast), app name, support contact, sign-in page.
+- Custom domain per tenant through the hosting provider's domains API: DNS instructions, verification, automatic TLS. Sign-in and the PWA manifest/icons are served per domain.
+- Branded email: the tenant's sender domain verified with Resend (SPF/DKIM), falling back to SCALER's.
+- Reseller accounts: a reseller owns several businesses, sees their usage and billing, and can set the brand for all of them. Billing goes to the reseller (Sprint 11).
+- "Powered by SCALER" shown or hidden by plan.
+
+**Acceptance:** two tenants on different custom domains in one deployment, with no cross-tenant session or brand leakage (cookie scope and RLS tests). The PWA installs with the tenant's name and icon.
 
 ## Decisions to confirm early
 | Decision | Needed by | Default if not confirmed |
@@ -183,3 +310,9 @@ Subscription billing, plan limits, self-serve onboarding, white-label, public AP
 | Job queue vendor | **Decided** | Postgres-backed queues run by the job route (ADR 0006, 0007); revisit Inngest only if volumes outgrow a 5-minute tick |
 | Production domain | Sprint 8 | `app.scalercrm.com` placeholder |
 | MY PERFECT FIT historical data source/format | Sprint 7 | CSV import |
+| Plan tiers, limits and prices | Before Sprint 10 | Starter / Growth / Scale tiers drafted in Sprint 10 for Springs 360 to price |
+| Billing provider | Before Sprint 11 | Razorpay Subscriptions (India first); Stripe when selling abroad |
+| Springs 360 GST registration and invoice details | Before Sprint 11 | — needed to issue tax invoices; billing ships in test mode without it |
+| Industry templates for onboarding | Sprint 12 | Tailoring (MY PERFECT FIT's setup), salon, clinic, real estate, retail |
+| API versioning and deprecation policy | Sprint 13 | `/api/v1` stable; breaking changes only in `/v2`, with 6 months' notice |
+| White-label demand (resellers vs single brands) | Before Sprint 16 | Build per-business branding first; reseller accounts only if a reseller has signed |
