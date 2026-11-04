@@ -1,4 +1,4 @@
-import { escapeHtml, formatDue, layout, type RenderedEmail, str } from "@/modules/email/templates";
+import { escapeHtml, formatDue, layout, type RenderedEmail, str } from "@/modules/email/layout";
 
 /** Dunning and invoice emails, queued by the database (private.billing_notify). */
 
