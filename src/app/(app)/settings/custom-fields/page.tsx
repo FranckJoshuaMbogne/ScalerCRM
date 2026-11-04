@@ -14,6 +14,7 @@ export const metadata = { title: "Custom fields" };
 const ENTITIES: { value: FieldEntity; title: string; note: string }[] = [
   { value: "lead", title: "Lead fields", note: "Asked when an enquiry comes in, e.g. garment type or occasion date." },
   { value: "customer", title: "Customer fields", note: "Kept on the customer file, e.g. body type or preferred fit." },
+  { value: "order", title: "Order fields", note: "Asked on every order, e.g. occasion date, trial date or delivery instructions." },
 ];
 
 export default async function CustomFieldsPage() {
@@ -28,7 +29,7 @@ export default async function CustomFieldsPage() {
       </Link>
       <PageHeader
         title="Custom fields"
-        description="Extra details your business tracks on leads and customers. Hiding a field keeps the values already saved."
+        description="Extra details your business tracks on leads, customers and orders. Hiding a field keeps the values already saved."
       />
       {ENTITIES.map((e) => {
         const defs = all.filter((d) => d.entity === e.value);

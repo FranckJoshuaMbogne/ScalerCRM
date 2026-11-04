@@ -42,6 +42,20 @@ describe("invitation email", () => {
   });
 });
 
+describe("appointment reminder email", () => {
+  it("names the customer, time and branch", () => {
+    const e = renderOutboxEmail(
+      "appointment_reminder",
+      { kind: "trial", starts_at: "2026-12-15T05:00:00Z", timezone: "Asia/Kolkata", customer_name: "Sita",
+        customer_phone: "+919811100002", branch_name: "Banjara Hills", path: "/appointments?date=2026-12-15" },
+      "https://app.example.com",
+    )!;
+    expect(e.subject).toMatch(/^Trial with Sita at 15 Dec 2026, 10:30\sam$/i);
+    expect(e.text).toContain("Banjara Hills");
+    expect(e.text).toContain("https://app.example.com/appointments?date=2026-12-15");
+  });
+});
+
 describe("outbox rendering", () => {
   it("returns null for unknown templates", () => {
     expect(renderOutboxEmail("nope", {}, "https://x")).toBeNull();

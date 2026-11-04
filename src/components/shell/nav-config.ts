@@ -60,6 +60,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/inbox",
+    built: true,
     label: "WhatsApp inbox",
     icon: Inbox,
     sprint: 5,
@@ -68,6 +69,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/campaigns",
+    built: true,
     label: "Campaigns",
     icon: Megaphone,
     sprint: 6,
@@ -76,6 +78,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/appointments",
+    built: true,
     label: "Appointments",
     icon: CalendarClock,
     sprint: 4,
@@ -83,6 +86,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/orders",
+    built: true,
     label: "Orders",
     icon: ShoppingBag,
     sprint: 4,
@@ -124,6 +128,7 @@ export const adminNav: NavItem[] = [
   },
   {
     href: "/integrations",
+    built: true,
     label: "Integrations",
     icon: Plug,
     sprint: 5,

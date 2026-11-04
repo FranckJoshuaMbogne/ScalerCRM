@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { CustomFieldInputs } from "@/components/crm/custom-field-inputs";
 import { Field, FormMessage, SelectField, SubmitButton, TextAreaField } from "@/components/ui/form";
 import { initialState } from "@/lib/forms";
 import type { CustomValues, FieldDefinition } from "@/modules/custom-fields/engine";
+import { addMeasurement } from "@/modules/measurements/actions";
 import {
   addAddress,
   addContact,
@@ -212,6 +213,40 @@ export function MergeForm({ survivorId, duplicateId, label }: { survivorId: stri
       <FormMessage state={state} />
       <div>
         <SubmitButton variant="danger" pendingLabel="Merging…">Merge files</SubmitButton>
+      </div>
+    </form>
+  );
+}
+
+export function MeasurementForm({
+  customerId,
+  templates,
+}: {
+  customerId: string;
+  templates: { id: string; garment: string; fields: { key: string; label: string }[] }[];
+}) {
+  const [state, action] = useActionState(addMeasurement, initialState);
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const template = templates.find((t) => t.id === templateId);
+  if (!templates.length) return null;
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="customerId" value={customerId} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SelectField label="Garment" name="templateId" id="m-template" value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+          options={templates.map((t) => ({ value: t.id, label: t.garment }))} />
+        <SelectField label="Unit" name="unit" id="m-unit" options={[{ value: "in", label: "Inches" }, { value: "cm", label: "Centimetres" }]} />
+      </div>
+      <div key={templateId} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {template?.fields.map((f) => (
+          <Field key={f.key} label={f.label} name={`m_${f.key}`} id={`m-${f.key}`} inputMode="decimal" autoComplete="off" state={state} />
+        ))}
+      </div>
+      <Field label="Notes" name="notes" id="m-notes" placeholder="Posture, fit preference…" state={state} />
+      <FormMessage state={state} />
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Saving…">Save measurements</SubmitButton>
       </div>
     </form>
   );

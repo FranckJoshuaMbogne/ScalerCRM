@@ -20,7 +20,7 @@ select set_config('t.biz', :'biz', false);
 insert into public.branches (business_id, name) values (:'biz', 'Bengaluru') returning id as blr \gset
 select id as sales_role from public.roles where key = 'sales_executive' and business_id is null \gset
 
-select tests.ok((select count(*) = 47 from public.my_permissions(:'biz')), 'admin holds every permission');
+select tests.ok((select count(*) from public.my_permissions(:'biz')) = (select count(*) from public.permissions), 'admin holds every permission');
 
 -- Invite Eli restricted to Bengaluru
 select public.create_invitation(:'biz', 'Eli@Gamma.test', :'sales_role', :'blr', false, array[:'blr']::uuid[]) as token \gset

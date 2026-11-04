@@ -4,6 +4,9 @@ import { Plus } from "lucide-react";
 import { listStatuses } from "@/modules/leads/config";
 import { countUnassignedLeads } from "@/modules/leads/queries";
 import { countMyTasks } from "@/modules/tasks/queries";
+import { getKpis } from "@/modules/dashboard/queries";
+import { formatMoney } from "@/lib/format";
+import { listOrderStages } from "@/modules/orders/queries";
 import { can, getContext } from "@/modules/tenancy/session";
 import {
   linkButton,
@@ -14,15 +17,6 @@ import {
 } from "@/components/ui/primitives";
 
 export const metadata = { title: "Dashboard" };
-
-/* Sprint 0: layout only. Figures are wired to analytics in Sprint 8. */
-const kpis = [
-  { label: "New leads", value: "0", note: "Last 30 days" },
-  { label: "Walk-ins", value: "0", note: "Last 30 days" },
-  { label: "Orders confirmed", value: "0", note: "Last 30 days" },
-  { label: "Revenue", value: "₹0", note: "Net, last 30 days" },
-  { label: "Outstanding", value: "₹0", note: "All open orders" },
-];
 
 const pipeline: { label: string; stage: Stage; count: number }[] = [
   { label: "New", stage: "new", count: 0 },
@@ -40,6 +34,7 @@ const setup = [
   { title: "Invite your team and give each person a role", href: "/team", sprint: 1 },
   { title: "Add your first lead or walk-in", href: "/leads", sprint: 2 },
   { title: "Shape your pipeline and turn on round-robin assignment", href: "/settings/pipeline", sprint: 3 },
+  { title: "Add your products and services, and record the first order", href: "/settings/orders", sprint: 4 },
   { title: "Connect WhatsApp", href: "/integrations", sprint: 5 },
   { title: "Connect Meta and Google lead forms", href: "/integrations", sprint: 7 },
 ];
@@ -78,6 +73,36 @@ async function Today() {
   );
 }
 
+async function Kpis() {
+  const ctx = await getContext();
+  const stages = await listOrderStages(ctx.business.businessId);
+  const k = await getKpis(
+    ctx.business.businessId,
+    stages.filter((s) => s.category === "open").map((s) => s.id),
+    stages.filter((s) => s.category === "cancelled").map((s) => s.id),
+    { payments: can(ctx, "payments.view") },
+  );
+  const cur = ctx.business.currency;
+  const kpis = [
+    { label: "New leads", value: String(k.newLeads), note: "Last 30 days" },
+    { label: "Walk-ins", value: String(k.walkIns), note: "Last 30 days" },
+    { label: "Orders", value: String(k.orders), note: "Last 30 days, not cancelled" },
+    { label: "Collected", value: k.revenue === null ? "—" : formatMoney(k.revenue, cur), note: "Payments less refunds, 30 days" },
+    { label: "Outstanding", value: formatMoney(k.outstanding, cur), note: "Open orders" },
+  ];
+  return (
+    <Panel className="mb-6 grid grid-cols-2 tabular-nums divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+      {kpis.map((kpi) => (
+        <div key={kpi.label} className="px-5 py-4">
+          <p className="text-[13px] text-muted">{kpi.label}</p>
+          <p className="mt-1 text-[26px] font-semibold tracking-tight">{kpi.value}</p>
+          <p className="text-[12px] text-muted">{kpi.note}</p>
+        </div>
+      ))}
+    </Panel>
+  );
+}
+
 export default function DashboardPage() {
   return (
     <>
@@ -95,15 +120,9 @@ export default function DashboardPage() {
         <Today />
       </Suspense>
 
-      <Panel className="mb-6 grid grid-cols-2 tabular-nums divide-line sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
-        {kpis.map((kpi) => (
-          <div key={kpi.label} className="px-5 py-4">
-            <p className="text-[13px] text-muted">{kpi.label}</p>
-            <p className="mt-1 text-[26px] font-semibold tracking-tight">{kpi.value}</p>
-            <p className="text-[12px] text-muted">{kpi.note}</p>
-          </div>
-        ))}
-      </Panel>
+      <Suspense fallback={<Panel className="mb-6 h-[104px]" />}>
+        <Kpis />
+      </Suspense>
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <Panel>

@@ -136,3 +136,20 @@ export function describeDue(dueAt: Date, now: Date, timeZone: string) {
   const date = new Intl.DateTimeFormat("en-IN", { timeZone, weekday: "short", day: "numeric", month: "short" }).format(dueAt);
   return `${date}, ${time}`;
 }
+
+/** "YYYY-MM-DD" of an instant in the business zone. */
+export function localDateKey(date: Date, timeZone: string) {
+  return toLocalInput(date, timeZone).slice(0, 10);
+}
+
+/** Midnight (business zone) of a "YYYY-MM-DD" key; null if malformed. */
+export function parseLocalDate(key: string, timeZone: string): Date | null {
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? parseLocalInput(`${key}T00:00`, timeZone) : null;
+}
+
+/** Monday of the week containing `date`, as local midnight. */
+export function startOfWeek(date: Date, timeZone: string) {
+  const p = zonedParts(date, timeZone);
+  const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay(); // 0 = Sunday
+  return startOfDay(date, timeZone, -((weekday + 6) % 7));
+}

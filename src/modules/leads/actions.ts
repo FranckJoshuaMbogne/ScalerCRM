@@ -10,6 +10,7 @@ import { normalisePhone } from "@/modules/crm/phone";
 import { readCustomFields } from "@/modules/custom-fields/engine";
 import { listFieldDefinitions } from "@/modules/custom-fields/queries";
 import { can, requirePermission } from "@/modules/tenancy/session";
+import { recordFormOptIn } from "@/modules/customers/consent";
 import { guard } from "@/modules/tenancy/guard";
 
 const optionalText = (max: number) =>
@@ -92,7 +93,8 @@ export async function createLead(_: ActionState, form: FormData): Promise<Action
     });
     if (error) return { ok: false, message: friendlyDbError(error), values: echo(form) };
 
-    const r = data as { lead_id: string; customer_created: boolean; matched_on: string | null };
+    const r = data as { lead_id: string; customer_id: string; customer_created: boolean; matched_on: string | null };
+    if (form.get("whatsappOptIn") === "on") await recordFormOptIn(ctx.business.businessId, r.customer_id, ctx.user.id, "lead");
     const params = new URLSearchParams({ created: "1" });
     if (d.customerId) params.set("existing", "1");
     else if (!r.customer_created && r.matched_on) params.set("matched", r.matched_on);

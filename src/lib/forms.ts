@@ -86,6 +86,35 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (msg.includes("not allowed to assign tasks")) return "You can only give tasks to yourself.";
   if (msg.includes("assignee must be an active member")) return "Choose someone who is an active member of the business.";
   if (msg.includes("round_robin_members_business_id_branch_id_user_id_key")) return "That person is already in this rotation.";
+  if (msg.includes("payment is more than the balance due")) return "That's more than the balance due on this order.";
+  if (msg.includes("refund is more than was paid")) return "A refund can't be more than what was paid.";
+  if (msg.includes("order is cancelled")) return "This order is cancelled, so it can't take payments.";
+  if (msg.includes("order is closed")) return "This order is delivered or cancelled, so its lines are locked. Reopen it first.";
+  if (msg.includes("quotation is closed")) return "This quotation is already accepted, declined or expired.";
+  if (msg.includes("needs at least one line")) return "Add at least one line.";
+  if (msg.includes("belongs to another customer")) return "That lead or order belongs to a different customer.";
+  if (msg.includes("new orders start in")) return "There's no open fulfilment stage. Add one under Settings → Orders.";
+  if (msg.includes("not allowed to edit orders")) return "You can't edit orders.";
+  if (msg.includes("not allowed to move orders")) return "You can't move orders between stages.";
+  if (msg.includes("can cancel or reopen")) return "Only someone who can edit orders can cancel or reopen them.";
+  if (msg.includes("not allowed to reassign orders")) return "You can't give orders to someone else.";
+  if (msg.includes("staff must be an active member")) return "Choose someone who is an active member of the business.";
+  if (msg.includes("catalog_items_sku_unique")) return "Another item already uses that SKU.";
+  if (msg.includes("measurement_templates_garment_unique")) return "There's already a template for that garment.";
+  if (msg.includes("order_items_check") || msg.includes("quotation_items_check")) return "A line's discount can't be more than the line.";
+  if (msg.includes("appointments_check")) return "An appointment must end after it starts, within 12 hours.";
+  if (msg.includes("outside the 24-hour window"))
+    return "It's been more than 24 hours since the customer last wrote. WhatsApp only allows approved templates now (coming with campaigns).";
+  if (msg.includes("whatsapp number is not connected")) return "This WhatsApp number is disconnected. Reconnect it under Integrations.";
+  if (msg.includes("number is connected to another business")) return "That WhatsApp number is already connected to another business.";
+  if (msg.includes("assignee cannot use the inbox")) return "That person's role doesn't include the inbox.";
+  if (msg.includes("not allowed to assign conversations")) return "You can only take conversations yourself.";
+  if (msg.includes("not allowed to reply")) return "You can't reply to this conversation.";
+  if (msg.includes("template is not approved")) return "The template isn't approved by WhatsApp yet.";
+  if (msg.includes("campaign was already launched")) return "This campaign has already been launched.";
+  if (msg.includes("template belongs to another WhatsApp account")) return "That template belongs to a different WhatsApp account than the sending number.";
+  if (msg.includes("every template variable needs a value")) return "Fill in every template variable, then save.";
+  if (/cannot \w+ a \w+ campaign/.test(msg)) return "That isn't possible in the campaign's current state.";
   if (error.code === "42501") return "You don't have permission to do that.";
   return msg || "Something went wrong. Try again.";
 }

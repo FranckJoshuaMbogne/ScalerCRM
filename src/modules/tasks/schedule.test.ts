@@ -82,3 +82,16 @@ describe("my day buckets", () => {
     expect(describeDue(new Date("2026-12-16T04:30:00Z"), now, IST)).toMatch(/^Tomorrow 10:00\sam$/i);
   });
 });
+
+describe("calendar helpers", async () => {
+  const { localDateKey, parseLocalDate, startOfWeek } = await import("./schedule");
+  it("keys and parses local dates", () => {
+    expect(localDateKey(new Date("2026-12-14T20:00:00Z"), IST)).toBe("2026-12-15");
+    expect(parseLocalDate("2026-12-15", IST)?.toISOString()).toBe("2026-12-14T18:30:00.000Z");
+    expect(parseLocalDate("15/12/2026", IST)).toBeNull();
+  });
+  it("starts weeks on Monday", () => {
+    // Thursday 17 Dec 2026, 10:00 IST → Monday 14 Dec 00:00 IST
+    expect(startOfWeek(new Date("2026-12-17T04:30:00Z"), IST).toISOString()).toBe("2026-12-13T18:30:00.000Z");
+  });
+});

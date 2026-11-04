@@ -48,6 +48,7 @@ export const PERMISSIONS = [
   "settings.branches.manage",
   "settings.pipeline.manage",
   "settings.custom_fields.manage",
+  "settings.orders.manage",
   "integrations.manage",
   "automation.manage",
   "audit.view",

@@ -21,12 +21,17 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Business details, branches, pipeline, lead assignment, custom fields and API keys."
+        description="Business details, branches, pipeline, orders, lead assignment, custom fields and API keys."
         actions={
           <>
             {can(ctx, "settings.pipeline.manage") && (
               <Link href="/settings/pipeline" className={linkButton.secondary}>
                 Pipeline
+              </Link>
+            )}
+            {can(ctx, "settings.orders.manage") && (
+              <Link href="/settings/orders" className={linkButton.secondary}>
+                Orders
               </Link>
             )}
             {can(ctx, "leads.assign") && (
