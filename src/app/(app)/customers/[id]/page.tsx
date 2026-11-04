@@ -18,6 +18,10 @@ import {
 import { getCustomer, listTags, signedAttachmentUrls } from "@/modules/customers/queries";
 import { listStatuses } from "@/modules/leads/config";
 import { listCustomerLeads } from "@/modules/leads/queries";
+import { OrderStageBadge, PaymentBadge, QuotationBadge } from "@/components/crm/order-badges";
+import { countNoShows, listCustomerAppointments } from "@/modules/appointments/queries";
+import { listCustomerMeasurements, listMeasurementTemplates } from "@/modules/measurements/queries";
+import { getCustomerValue, listCustomerOrders, listCustomerQuotations, listOrderStages } from "@/modules/orders/queries";
 import { describeCustomerEvent } from "@/modules/leads/timeline";
 import { listBranches, listMembers } from "@/modules/team/queries";
 import { can, getContext } from "@/modules/tenancy/session";
@@ -27,6 +31,7 @@ import {
   AddTagForm,
   ConsentForm,
   IdentityForm,
+  MeasurementForm,
   NoteForm,
   UploadForm,
 } from "../customer-forms";
@@ -60,6 +65,23 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   if (!customer) notFound();
   if (customer.mergedIntoId) redirect(`/customers/${customer.mergedIntoId}`);
 
+  const seeOrders = can(ctx, "orders.view_all") || can(ctx, "orders.view_assigned");
+  const seeAppointments = can(ctx, "appointments.view");
+  const [orderStages, orders, quotations, appointments, noShows, measurements, templates] = await Promise.all([
+    listOrderStages(businessId),
+    seeOrders ? listCustomerOrders(id) : Promise.resolve([]),
+    seeOrders ? listCustomerQuotations(id) : Promise.resolve([]),
+    seeAppointments ? listCustomerAppointments(id) : Promise.resolve([]),
+    seeAppointments ? countNoShows(id) : Promise.resolve(0),
+    listCustomerMeasurements(id),
+    listMeasurementTemplates(businessId),
+  ]);
+  const value = seeOrders
+    ? await getCustomerValue(id, orderStages.filter((s) => s.category === "cancelled").map((s) => s.id))
+    : null;
+  const orderStage = new Map(orderStages.map((s) => [s.id, s]));
+  const latestByGarment = [...new Map(measurements.map((m) => [m.garment, m])).values()];
+  const cur = ctx.business.currency;
   const [leads, statuses, branches, members, fields, allTags, urls] = await Promise.all([
     listCustomerLeads(id),
     listStatuses(businessId),
@@ -90,6 +112,16 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {can(ctx, "leads.create") && (
               <Link href={`/leads/new?customer=${customer.id}`} className={linkButton.secondary}>
                 Add lead
+              </Link>
+            )}
+            {can(ctx, "orders.create") && (
+              <Link href={`/orders/new?customer=${customer.id}`} className={linkButton.secondary}>
+                New order
+              </Link>
+            )}
+            {can(ctx, "appointments.manage") && (
+              <Link href={`/appointments/new?customer=${customer.id}`} className={linkButton.secondary}>
+                Book
               </Link>
             )}
             {can(ctx, "customers.merge") && (
@@ -134,9 +166,132 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             )}
           </Section>
 
-          <Section title="Orders">
-            <EmptyState title="Orders arrive in Sprint 4">Quotations, orders and payments will be listed here.</EmptyState>
-          </Section>
+          {value && (
+            <Panel className="grid grid-cols-2 divide-line tabular-nums sm:grid-cols-4 sm:divide-x">
+              {[
+                { label: "Lifetime value", v: formatMoney(value.lifetimeValue, cur) },
+                { label: "Orders", v: String(value.ordersCount) },
+                { label: "Outstanding", v: formatMoney(value.outstanding, cur) },
+                { label: "Last order", v: value.lastOrderAt ? formatDate(value.lastOrderAt, tz) : "—" },
+              ].map((k) => (
+                <div key={k.label} className="px-5 py-3.5">
+                  <p className="text-[12.5px] text-muted">{k.label}</p>
+                  <p className="mt-0.5 text-[18px] font-semibold">{k.v}</p>
+                </div>
+              ))}
+            </Panel>
+          )}
+
+          {seeOrders && (
+            <Section
+              title={`Orders (${orders.length})`}
+              action={
+                can(ctx, "orders.create") ? (
+                  <Link href={`/orders/new?kind=quotation&customer=${customer.id}`} className="text-[13px] font-medium text-signal hover:underline">
+                    New quotation
+                  </Link>
+                ) : undefined
+              }
+            >
+              {orders.length === 0 && quotations.length === 0 ? (
+                <EmptyState title="No orders yet" />
+              ) : (
+                <ul className="divide-y divide-line">
+                  {orders.map((o) => {
+                    const st = orderStage.get(o.stageId);
+                    return (
+                      <li key={o.id}>
+                        <Link href={`/orders/${o.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-[13.5px] hover:bg-paper/60">
+                          <span className="font-medium">{o.orderNumber}</span>
+                          <span className="flex-1 text-[12.5px] text-muted">{formatDate(o.createdAt, tz)}</span>
+                          <span className="tabular-nums">{formatMoney(o.total, cur)}</span>
+                          {st && <OrderStageBadge name={st.name} category={st.category} />}
+                          {st?.category !== "cancelled" && <PaymentBadge total={o.total} netPaid={o.netPaid} />}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                  {quotations
+                    .filter((q) => q.status === "draft" || q.status === "sent")
+                    .map((q) => (
+                      <li key={q.id}>
+                        <Link href={`/orders/quotations/${q.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-[13.5px] hover:bg-paper/60">
+                          <span className="font-medium">{q.quotationNumber}</span>
+                          <span className="flex-1 text-[12.5px] text-muted">Quotation</span>
+                          <span className="tabular-nums">{formatMoney(q.total, cur)}</span>
+                          <QuotationBadge status={q.status} />
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </Section>
+          )}
+
+          {seeAppointments && (
+            <Section title={`Appointments${noShows ? ` · ${noShows} no-show${noShows === 1 ? "" : "s"}` : ""}`}>
+              {appointments.length === 0 ? (
+                <EmptyState title="No appointments yet" />
+              ) : (
+                <ul className="divide-y divide-line">
+                  {appointments.slice(0, 10).map((a) => (
+                    <li key={a.id} className="flex flex-wrap gap-x-4 px-5 py-2.5 text-[13.5px]">
+                      <span className="w-40 tabular-nums">{formatDateTime(a.startsAt, tz)}</span>
+                      <span className="flex-1 capitalize">{a.kind}</span>
+                      <span className={a.status === "no_show" ? "font-medium text-danger" : "text-muted"}>
+                        {a.status === "completed" ? "Arrived" : a.status === "no_show" ? "No-show" : a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
+          )}
+
+          {(templates.some((t) => t.isActive) || measurements.length > 0) && (
+            <Section title="Measurements">
+              {latestByGarment.length > 0 && (
+                <ul className="divide-y divide-line">
+                  {latestByGarment.map((m) => {
+                    const tpl = templates.find((t) => t.garment === m.garment);
+                    const label = new Map(tpl?.fields.map((f) => [f.key, f.label]) ?? []);
+                    const older = measurements.filter((x) => x.garment === m.garment).length - 1;
+                    return (
+                      <li key={m.id} className="px-5 py-3 text-[13.5px]">
+                        <p className="font-medium">
+                          {m.garment}{" "}
+                          <span className="text-[12.5px] font-normal text-muted">
+                            · {formatDate(m.takenAt, tz)} · {m.unit === "cm" ? "cm" : "inches"}
+                            {older > 0 && ` · ${older} earlier`}
+                          </span>
+                        </p>
+                        <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[13px] tabular-nums">
+                          {Object.entries(m.readings).map(([k, v]) => (
+                            <div key={k}>
+                              <dt className="inline text-muted">{label.get(k) ?? k.replace(/_/g, " ")} </dt>
+                              <dd className="inline">{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {m.notes && <p className="mt-1 text-[12.5px] text-muted">{m.notes}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {edit && (
+                <details className="border-t border-line px-5 py-3">
+                  <summary className="cursor-pointer text-[13.5px] font-medium text-signal select-none">Take new measurements</summary>
+                  <div className="mt-3">
+                    <MeasurementForm
+                      customerId={customer.id}
+                      templates={templates.filter((t) => t.isActive).map((t) => ({ id: t.id, garment: t.garment, fields: t.fields }))}
+                    />
+                  </div>
+                </details>
+              )}
+            </Section>
+          )}
 
           <Section title="Timeline">
             {edit && (

@@ -52,6 +52,18 @@ export function describeLeadActivity(
       const who = a.meta.assignee_id ? names.person(a.meta.assignee_id) : undefined;
       return `set a ${type}: ${String(a.meta.title ?? "")}${who ? ` for ${who}` : ""}`;
     }
+    case "order_created":
+      return `created order ${String(a.meta.order_number ?? "")}`.trim();
+    case "quotation_created":
+      return `sent quotation ${String(a.meta.quotation_number ?? "")}`.trim();
+    case "appointment_booked":
+      return `booked a ${String(a.meta.kind ?? "visit").replace(/_/g, " ")}`;
+    case "appointment_completed":
+      return `marked the ${String(a.meta.kind ?? "appointment").replace(/_/g, " ")} as attended`;
+    case "appointment_no_show":
+      return `marked the ${String(a.meta.kind ?? "appointment").replace(/_/g, " ")} as a no-show`;
+    case "appointment_cancelled":
+      return `cancelled the ${String(a.meta.kind ?? "appointment").replace(/_/g, " ")}`;
     case "task_completed":
       return `completed ${String(a.meta.title ?? "a task")}`;
     case "task_cancelled":
@@ -98,6 +110,14 @@ export function describeCustomerEvent(e: { type: string; changes: Record<string,
       return "added a note";
     case "merged":
       return e.body ?? "merged another file into this one";
+    case "order_created":
+      return `placed order ${e.body ?? ""}`.trim();
+    case "payment_received":
+      return `paid ${String(e.changes?.amount ?? "")} (${e.body ?? "receipt"})`;
+    case "refund_recorded":
+      return `was refunded ${String(e.changes?.amount ?? "")} (${e.body ?? "receipt"})`;
+    case "measurement_added":
+      return `had ${e.body ?? "garment"} measurements taken`;
     case "contact_added":
       return `added ${String(e.changes?.kind ?? "contact")} ${String(e.changes?.value ?? "")}`.trim();
     case "contact_removed":

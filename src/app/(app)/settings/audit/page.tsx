@@ -21,6 +21,9 @@ const ENTITY: Record<string, string> = {
   lead_lost_reasons: "a lost reason",
   lead_assignment_settings: "lead assignment",
   round_robin_members: "the round-robin rotation",
+  catalog_items: "a catalogue item",
+  order_stages: "a fulfilment stage",
+  measurement_templates: "a measurement template",
 };
 
 const VERB: Record<AuditEntry["action"], string> = { insert: "added", update: "changed", delete: "deleted" };

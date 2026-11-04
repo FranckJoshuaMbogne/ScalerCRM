@@ -92,6 +92,7 @@
 
 ## Sprint 4 — Walk-ins, appointments & orders
 **Goal:** connect the full journey from enquiry to delivered order.
+**Status:** built on branch `claude/sweet-curie-2qveb2`. Decisions in [ADR 0005](adr/0005-appointments-orders-payments.md). Customer reminders by WhatsApp wait for Sprint 5; staff reminders use the Sprint 3 job route. The job queue (Inngest) is not needed yet and moves to Sprint 5 with the WhatsApp webhooks.
 
 - Appointment calendar (branch / PIC views), reminders, no-show tracking
 - Walk-in registration with phone lookup → CIF → lead (source = walk-in)
@@ -174,6 +175,6 @@ Subscription billing, plan limits, self-serve onboarding, white-label, public AP
 | Owner of SCALER's Meta app | **Decided** | Springs 360 (Tech Provider) |
 | Springs 360 business verification + app review (WhatsApp Tech Provider; `leads_retrieval` for Lead Ads) | Before Sprint 5 | — long lead time; development uses Meta's test number meanwhile |
 | Client-side verification, WABA, numbers, templates | Per client, at onboarding | Each business does this in its own Business Manager |
-| Job queue vendor | Sprint 4 | Inngest |
+| Job queue vendor | Sprint 5 | Inngest (the Sprint 3 job route covers reminders until webhooks need a queue) |
 | Production domain | Sprint 8 | `app.scalercrm.com` placeholder |
 | MY PERFECT FIT historical data source/format | Sprint 7 | CSV import |

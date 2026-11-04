@@ -76,6 +76,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/appointments",
+    built: true,
     label: "Appointments",
     icon: CalendarClock,
     sprint: 4,
@@ -83,6 +84,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/orders",
+    built: true,
     label: "Orders",
     icon: ShoppingBag,
     sprint: 4,

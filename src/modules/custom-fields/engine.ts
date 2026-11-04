@@ -7,7 +7,7 @@
 
 export const FIELD_TYPES = ["text", "textarea", "number", "date", "select", "multiselect", "boolean"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
-export type FieldEntity = "customer" | "lead";
+export type FieldEntity = "customer" | "lead" | "order";
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   text: "Short text",

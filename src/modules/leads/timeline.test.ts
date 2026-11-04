@@ -34,6 +34,10 @@ describe("describeLeadActivity", () => {
       describeLeadActivity({ type: "task_created", meta: { task_type: "call", title: "Call back", assignee_id: "u1" } }, names),
     ).toBe("set a call: Call back for Asha");
     expect(describeLeadActivity({ type: "task_completed", meta: { title: "Call back" } }, names)).toBe("completed Call back");
+    expect(describeLeadActivity({ type: "order_created", meta: { order_number: "O-000001" } }, names)).toBe("created order O-000001");
+    expect(describeLeadActivity({ type: "appointment_no_show", meta: { kind: "trial" } }, names)).toBe(
+      "marked the trial as a no-show",
+    );
   });
 });
 

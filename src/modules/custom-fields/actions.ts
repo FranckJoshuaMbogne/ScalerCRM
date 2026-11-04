@@ -10,7 +10,7 @@ import { FIELD_TYPES, fieldKey, parseOptions } from "./engine";
 
 const schema = z.object({
   fieldId: z.union([z.uuid(), z.literal("")]).optional(),
-  entity: z.enum(["customer", "lead"]),
+  entity: z.enum(["customer", "lead", "order"]),
   label: z.string().trim().min(1, "Name the field.").max(60),
   type: z.enum(FIELD_TYPES),
   options: z.string().max(4000).optional(),

@@ -6,7 +6,7 @@ import { TaskList } from "@/components/crm/task-list";
 import { ActionForm } from "@/components/ui/action-form";
 import { SubmitButton } from "@/components/ui/form";
 import { NoAccess } from "@/components/ui/no-access";
-import { PageHeader, Panel, StatusBadge } from "@/components/ui/primitives";
+import { linkButton, PageHeader, Panel, StatusBadge } from "@/components/ui/primitives";
 import { formatDateTime, formatMoney, formatPhone } from "@/lib/format";
 import { formatCustomValue } from "@/modules/custom-fields/engine";
 import { listFieldDefinitions } from "@/modules/custom-fields/queries";
@@ -114,7 +114,20 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
       <PageHeader
         title={`${lead.leadNumber} · ${lead.customer?.fullName ?? "Unknown customer"}`}
         description={lead.title ?? undefined}
-        actions={current && <StatusBadge stage={current.stage} name={current.name} />}
+        actions={
+          <>
+            {can(ctx, "orders.create") && !lead.archivedAt && (
+              <>
+                <Link href={`/orders/new?kind=quotation&customer=${lead.customerId}&lead=${lead.id}`} className={linkButton.secondary}>Quotation</Link>
+                <Link href={`/orders/new?customer=${lead.customerId}&lead=${lead.id}`} className={linkButton.secondary}>Order</Link>
+              </>
+            )}
+            {can(ctx, "appointments.manage") && !lead.archivedAt && (
+              <Link href={`/appointments/new?customer=${lead.customerId}&lead=${lead.id}`} className={linkButton.secondary}>Book visit</Link>
+            )}
+            {current && <StatusBadge stage={current.stage} name={current.name} />}
+          </>
+        }
       />
 
       {sp.created && (
@@ -125,6 +138,17 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/lea
             : sp.matched
               ? `This ${sp.matched === "email" ? "email" : "phone number"} was already on file, so the lead was added to ${lead.customer?.cifNumber}.`
               : `A new customer file ${lead.customer?.cifNumber} was created.`}
+        </p>
+      )}
+      {sp.walkin && (
+        <p role="status" className="mb-4 rounded-[var(--radius-control)] bg-signal-soft px-3 py-2 text-[13.5px]">
+          Walk-in registered.{" "}
+          {sp.new
+            ? `New customer file ${lead.customer?.cifNumber} and a walk-in lead were created.`
+            : sp.existing
+              ? `${lead.customer?.fullName} is a returning customer, so the visit was added to this open lead.`
+              : `${lead.customer?.fullName} was already on file; a new walk-in lead was opened.`}
+          {sp.arrived && " Their booking for today is marked as arrived."}
         </p>
       )}
       {lead.archivedAt && (
