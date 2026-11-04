@@ -106,6 +106,7 @@
 
 ## Sprint 5 — WhatsApp engine & inbox
 **Goal:** WhatsApp conversations live inside the CRM.
+**Status:** built on branch `sprint-5/whatsapp-inbox`. Decisions in [ADR 0006](adr/0006-whatsapp-engine-and-inbox.md). Webhook hand-off uses `after()` plus Postgres-backed retries through the job route instead of Inngest; the queue decision moves to Sprint 6 (campaign throttling).
 
 - `MessagingProvider` interface; Meta Cloud API adapter (direct, via SCALER's Tech Provider app owned by Springs 360)
 - Embedded Signup: each business connects its own WhatsApp Business Account and numbers from Integrations; per-tenant tokens in encrypted storage (Supabase Vault), connection test
@@ -175,6 +176,6 @@ Subscription billing, plan limits, self-serve onboarding, white-label, public AP
 | Owner of SCALER's Meta app | **Decided** | Springs 360 (Tech Provider) |
 | Springs 360 business verification + app review (WhatsApp Tech Provider; `leads_retrieval` for Lead Ads) | Before Sprint 5 | — long lead time; development uses Meta's test number meanwhile |
 | Client-side verification, WABA, numbers, templates | Per client, at onboarding | Each business does this in its own Business Manager |
-| Job queue vendor | Sprint 5 | Inngest (the Sprint 3 job route covers reminders until webhooks need a queue) |
+| Job queue vendor | Sprint 6 | Inngest, if campaign throttling needs it (webhooks use `after()` + Postgres retries, ADR 0006) |
 | Production domain | Sprint 8 | `app.scalercrm.com` placeholder |
 | MY PERFECT FIT historical data source/format | Sprint 7 | CSV import |

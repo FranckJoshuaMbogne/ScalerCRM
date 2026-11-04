@@ -103,6 +103,13 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   if (msg.includes("measurement_templates_garment_unique")) return "There's already a template for that garment.";
   if (msg.includes("order_items_check") || msg.includes("quotation_items_check")) return "A line's discount can't be more than the line.";
   if (msg.includes("appointments_check")) return "An appointment must end after it starts, within 12 hours.";
+  if (msg.includes("outside the 24-hour window"))
+    return "It's been more than 24 hours since the customer last wrote. WhatsApp only allows approved templates now (coming with campaigns).";
+  if (msg.includes("whatsapp number is not connected")) return "This WhatsApp number is disconnected. Reconnect it under Integrations.";
+  if (msg.includes("number is connected to another business")) return "That WhatsApp number is already connected to another business.";
+  if (msg.includes("assignee cannot use the inbox")) return "That person's role doesn't include the inbox.";
+  if (msg.includes("not allowed to assign conversations")) return "You can only take conversations yourself.";
+  if (msg.includes("not allowed to reply")) return "You can't reply to this conversation.";
   if (error.code === "42501") return "You don't have permission to do that.";
   return msg || "Something went wrong. Try again.";
 }

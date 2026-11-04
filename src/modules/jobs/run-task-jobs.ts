@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailConfigured, sendEmail } from "@/modules/email/send";
 import { renderOutboxEmail } from "@/modules/email/templates";
+import { retryPendingEvents } from "@/modules/integrations/whatsapp/ingest";
 
 /** True when the request carries `Authorization: Bearer $CRON_SECRET`. */
 export function authorisedCron(request: Request) {
@@ -23,6 +24,7 @@ export async function runTaskJobs(origin: string) {
   const admin = createAdminClient();
   const { data: jobs, error } = await admin.rpc("run_task_jobs");
   if (error) throw new Error(`run_task_jobs failed: ${error.message}`);
+  const webhookRetries = await retryPendingEvents(admin);
 
   // Without email configured, queued reminders wait (and expire after a day).
   const mail = { sent: 0, failed: 0, skipped: !emailConfigured() };
@@ -43,5 +45,5 @@ export async function runTaskJobs(origin: string) {
       }
     }
   }
-  return { jobs, mail };
+  return { jobs, mail, webhookRetries };
 }

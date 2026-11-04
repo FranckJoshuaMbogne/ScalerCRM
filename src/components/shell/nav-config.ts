@@ -60,6 +60,7 @@ export const workspaceNav: NavItem[] = [
   },
   {
     href: "/inbox",
+    built: true,
     label: "WhatsApp inbox",
     icon: Inbox,
     sprint: 5,
@@ -126,6 +127,7 @@ export const adminNav: NavItem[] = [
   },
   {
     href: "/integrations",
+    built: true,
     label: "Integrations",
     icon: Plug,
     sprint: 5,

@@ -21,6 +21,7 @@ import { listCustomerLeads } from "@/modules/leads/queries";
 import { OrderStageBadge, PaymentBadge, QuotationBadge } from "@/components/crm/order-badges";
 import { countNoShows, listCustomerAppointments } from "@/modules/appointments/queries";
 import { listCustomerMeasurements, listMeasurementTemplates } from "@/modules/measurements/queries";
+import { conversationForCustomer } from "@/modules/inbox/queries";
 import { getCustomerValue, listCustomerOrders, listCustomerQuotations, listOrderStages } from "@/modules/orders/queries";
 import { describeCustomerEvent } from "@/modules/leads/timeline";
 import { listBranches, listMembers } from "@/modules/team/queries";
@@ -76,6 +77,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
     listCustomerMeasurements(id),
     listMeasurementTemplates(businessId),
   ]);
+  const chatId =
+    can(ctx, "inbox.view_all") || can(ctx, "inbox.view_assigned") ? await conversationForCustomer(id) : undefined;
   const value = seeOrders
     ? await getCustomerValue(id, orderStages.filter((s) => s.category === "cancelled").map((s) => s.id))
     : null;
@@ -112,6 +115,11 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {can(ctx, "leads.create") && (
               <Link href={`/leads/new?customer=${customer.id}`} className={linkButton.secondary}>
                 Add lead
+              </Link>
+            )}
+            {chatId && (
+              <Link href={`/inbox?c=${chatId}`} className={linkButton.secondary}>
+                WhatsApp chat
               </Link>
             )}
             {can(ctx, "orders.create") && (
