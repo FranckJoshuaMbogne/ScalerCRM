@@ -87,7 +87,8 @@ select loadtest.bench('leaderboard, this month', $q$
 insert into public.targets (business_id, scope, branch_id, period_type, period_start, metric, target, created_by)
 select current_setting('load.biz')::uuid, 'branch', b.id, 'month', date_trunc('month', current_date), m, 100, auth.uid()
   from public.branches b cross join unnest(array['leads_handled', 'conversions', 'revenue', 'collections']) m
- where b.business_id = current_setting('load.biz')::uuid;
+ where b.business_id = current_setting('load.biz')::uuid
+on conflict do nothing;
 select loadtest.bench('targets: 40 branch targets with progress', $q$
   select count(*) from public.target_progress(current_setting('load.biz')::uuid)$q$, 1000);
 select loadtest.bench('campaign audience estimate (all)', $q$

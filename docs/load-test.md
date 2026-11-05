@@ -65,6 +65,69 @@ These need the `(business_id, updated_at, id)` indexes added in migration `20270
 - recording a send takes about 3 ms;
 - the database is not the limit. WhatsApp's per-number tier is: 1,000 to unlimited unique users a day, at up to 80 messages a second.
 
+## At 1 million leads across 10 branches (Sprint 15)
+
+```bash
+LOAD_LEADS=1000000 DATABASE_URL=postgresql://postgres@localhost:5432/postgres scripts/load-test.sh
+```
+
+**Data:** one business with:
+- 10 branches;
+- 666,666 customers;
+- 1,000,000 leads over two years;
+- 400,000 orders, each with a payment;
+- 340,000 tasks;
+- 10,000 lead transfers;
+- 40 branch targets.
+
+Days older than 90 are in the analytics rollup. Seeding takes about 30 minutes; the queries take a few more.
+
+| Query | Median (ms) | Budget (ms) |
+|-------|------------:|------------:|
+| Lead list, page 1 | 0.6 | 300 |
+| Lead list, page 200 | 5.1 | 300 |
+| Lead list total count (admin) | 407 | 500 |
+| Customer search by phone | 17 | 50 |
+| Customer search by name prefix | 97 | 300 |
+| Analytics summary, 30 days | 396 | 1,000 |
+| Analytics summary, 12 months | 614 | 2,000 |
+| Breakdown by source, 12 months | 807 | 2,000 |
+| Breakdown by owner, 12 months | 724 | 2,000 |
+| Salesperson performance, 90 days | 577 | 2,000 |
+| Operations summary | 186 | 1,000 |
+| Branch comparison, 12 months | 646 | 2,000 |
+| Branch comparison, 30 days | 430 | 1,000 |
+| Team report for a branch, 90 days | 229 | 1,000 |
+| Lead transfers, 12 months | 821 | 1,000 |
+| Leaderboard, this month | 24 | 1,000 |
+| Targets: 40 branch targets with progress | 255 | 1,000 |
+| Campaign audience estimate (667k customers) | 962 | 2,000 |
+| Launch a campaign to 60,000 recipients | 3,801 | 30,000 |
+| Salesperson: my lead count (100,000 leads) | 371 | 500 |
+| API pages, webhook claims and campaign queue | all under 455 | 300–5,000 |
+
+All 34 are within budget.
+
+**What the first run at this size found, and the fixes (migration `20270614000000`):**
+1. **Seven queries were over budget:**
+   - targets: 6.9 s;
+   - campaign audience estimate: 4.9 s;
+   - leaderboard: 4.1 s;
+   - branch comparison, 12 months: 3.8 s;
+   - branch comparison, 30 days: 3.3 s;
+   - breakdown by source: 2.1 s;
+   - summary, 30 days: 1.4 s.
+2. **Missing indexes.** Analytics counts archived leads too, so the lead list's index (which skips them) couldn't serve period queries. Added indexes:
+   - leads by `(business_id, created_at)`;
+   - leads by `(business_id, closed_at)`;
+   - walk-ins and appointments by time.
+3. **Once per row instead of once.**
+   - Targets and the leaderboard ran one query per target or per person. They now make one grouped pass per measure.
+   - Outstanding balances went through the per-order `order_balances` view once per branch. They are now one grouped query (`private.open_balances`), and the branch comparison materialises it.
+   - The audience checked consent and suppression per customer. Each is now one hashed lookup per query.
+4. **Re-scans.** The breakdown re-scanned the attributed orders for every group. They are now aggregated once.
+5. **Generic plans.** After five calls in a session, Postgres switched the report functions to a generic plan that was nearly three times slower (2.1 s instead of 0.8 s for the breakdown). Report functions now set `plan_cache_mode = force_custom_plan`; they run rarely and with very different periods.
+
 ## What the test found, and the fixes (migration `20270308000000`)
 
 1. **Row level security cost one permission lookup per row.**

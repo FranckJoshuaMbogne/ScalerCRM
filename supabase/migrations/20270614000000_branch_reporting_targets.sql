@@ -235,6 +235,8 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
@@ -304,9 +306,32 @@ begin
 end;
 $$;
 
--- Payments are found by received date (no index existed for that per business).
+-- Period reads by time. The Sprint 2 lead index skips archived leads, which
+-- analytics counts, so it can't serve these; closed_at serves wins in a period.
+create index if not exists leads_business_created_idx on public.leads (business_id, created_at);
+create index if not exists leads_business_closed_idx on public.leads (business_id, closed_at) where closed_at is not null;
 create index if not exists walk_ins_business_visited_idx on public.walk_ins (business_id, visited_at);
 create index if not exists appointments_business_starts_idx on public.appointments (business_id, starts_at);
+
+-- What open orders still owe, per branch, in one pass (the order_balances view
+-- computes one order at a time, which is slow across a whole business).
+create or replace function private.open_balances(p_business_id uuid)
+returns table (branch_id uuid, outstanding numeric)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select x.branch_id, coalesce(sum(x.balance) filter (where x.balance > 0), 0)
+    from (select o.id, o.branch_id,
+                 o.total - coalesce(sum(case when pay.kind = 'refund' then -pay.amount else pay.amount end), 0) as balance
+            from public.orders o
+            join public.order_stages s on s.id = o.stage_id and s.category = 'open'
+            left join public.payments pay on pay.order_id = o.id
+           where o.business_id = p_business_id
+           group by o.id, o.branch_id, o.total) x
+   group by x.branch_id;
+$$;
 
 -- The Sprint 8 summary, reading counts and money through metric_rows.
 create or replace function public.analytics_summary(p_business_id uuid, p_from date, p_to date)
@@ -315,6 +340,8 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 declare
   v_from timestamptz;
@@ -349,10 +376,7 @@ begin
     'revenue', case when v_money then m.revenue end,
     'average_order_value', case when v_money then round(m.revenue / nullif(m.orders, 0), 2) end,
     'collected', case when v_money then m.collected end,
-    'outstanding', case when v_money then (select coalesce(sum(b.balance), 0) from public.order_balances b
-                                            join public.orders o on o.id = b.order_id
-                                            join public.order_stages s on s.id = o.stage_id and s.category = 'open'
-                                           where b.business_id = p_business_id and b.balance > 0) end,
+    'outstanding', case when v_money then (select coalesce(sum(ob.outstanding), 0) from private.open_balances(p_business_id) ob) end,
     'spend', case when v_money or private.has_permission(p_business_id, 'analytics.marketing') then
                (select coalesce(sum(spend), 0) from public.ad_spend_daily where business_id = p_business_id and day between p_from and p_to) end,
     'median_first_reply_seconds', (select percentile_cont(0.5) within group (order by response_seconds)
@@ -391,6 +415,8 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
@@ -417,6 +443,12 @@ begin
            sum(r.leads * coalesce(sr.rate, 0)) as expected
       from rows r left join source_rate sr on sr.source_id is not distinct from r.source_id
      group by r.branch_id
+  ), balances as materialized (
+    select * from private.open_balances(p_business_id)
+  ), overdue as materialized (
+    select t.branch_id, count(*) as n from public.tasks t
+     where t.business_id = p_business_id and t.completed_at is null and t.cancelled_at is null and t.due_at < now()
+     group by t.branch_id
   ), visible as (
     select b.id, b.name from public.branches b
      where b.business_id = p_business_id and (v_all or b.id in (select x.branch_id from private.report_branches(p_business_id) x))
@@ -432,14 +464,10 @@ begin
          case when v_money then coalesce(pb.revenue, 0) end,
          case when v_money then round(pb.revenue / nullif(pb.orders, 0), 2) end,
          case when v_money then coalesce(pb.collected, 0) end,
-         case when v_money then (select coalesce(sum(ob.balance), 0) from public.order_balances ob
-                                   join public.orders o on o.id = ob.order_id
-                                   join public.order_stages s on s.id = o.stage_id and s.category = 'open'
-                                  where ob.business_id = p_business_id and ob.balance > 0 and o.branch_id is not distinct from v.id) end,
+         case when v_money then coalesce((select bl.outstanding from balances bl where bl.branch_id is not distinct from v.id), 0) end,
          coalesce(pb.walk_ins, 0)::bigint, coalesce(pb.appointments, 0)::bigint,
          round(100.0 * pb.no_shows / nullif(pb.no_shows + pb.attended, 0), 1),
-         (select count(*) from public.tasks t where t.business_id = p_business_id and t.branch_id is not distinct from v.id
-            and t.completed_at is null and t.cancelled_at is null and t.due_at < now())
+         coalesce((select od.n from overdue od where od.branch_id is not distinct from v.id), 0)::bigint
     from visible v
     left join per_branch pb on pb.branch_id is not distinct from v.id
    where v.id is not null or pb.branch_id is null and (pb.leads > 0 or pb.orders > 0 or pb.collected <> 0 or pb.walk_ins > 0 or pb.appointments > 0)
@@ -458,6 +486,8 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
@@ -568,37 +598,13 @@ revoke all on public.targets from anon;
 revoke update on public.targets from authenticated;
 grant update (target) on public.targets to authenticated;
 
--- What a target's owner has achieved in [p_lo, p_hi).
+-- Targets whose period includes p_on that the caller may see, with progress
+-- and where they should be by now (share of the period gone).
 --   leads_handled: leads created in the period (owned by the person / in the branch)
 --   conversions:   leads won (closed) in the period
 --   revenue:       orders created in the period, not cancelled
 --   collections:   payments less refunds received in the period
-create or replace function private.target_actual(t public.targets, p_lo timestamptz, p_hi timestamptz)
-returns numeric
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select case t.metric
-    when 'leads_handled' then (select count(*)::numeric from public.leads l
-       where l.business_id = t.business_id and l.created_at >= p_lo and l.created_at < p_hi
-         and (t.scope <> 'person' or l.owner_id = t.user_id) and (t.scope <> 'branch' or l.branch_id = t.branch_id))
-    when 'conversions' then (select count(*)::numeric from public.leads l join public.lead_statuses s on s.id = l.status_id and s.category = 'won'
-       where l.business_id = t.business_id and l.closed_at >= p_lo and l.closed_at < p_hi
-         and (t.scope <> 'person' or l.owner_id = t.user_id) and (t.scope <> 'branch' or l.branch_id = t.branch_id))
-    when 'revenue' then (select coalesce(sum(o.total), 0) from public.orders o join public.order_stages s on s.id = o.stage_id and s.category <> 'cancelled'
-       where o.business_id = t.business_id and o.created_at >= p_lo and o.created_at < p_hi
-         and (t.scope <> 'person' or o.owner_id = t.user_id) and (t.scope <> 'branch' or o.branch_id = t.branch_id))
-    when 'collections' then (select coalesce(sum(case when p.kind = 'refund' then -p.amount else p.amount end), 0)
-       from public.payments p join public.orders o on o.id = p.order_id
-       where p.business_id = t.business_id and p.received_at >= p_lo and p.received_at < p_hi
-         and (t.scope <> 'person' or o.owner_id = t.user_id) and (t.scope <> 'branch' or o.branch_id = t.branch_id))
-  end;
-$$;
-
--- Targets whose period includes p_on that the caller may see, with progress
--- and where they should be by now (share of the period gone).
+-- Actuals come from one grouped pass per measure and period, not one query per target.
 create or replace function public.target_progress(p_business_id uuid, p_on date default null, p_mine_only boolean default false)
 returns table (id uuid, scope text, branch_id uuid, branch_name text, user_id uuid, person_name text,
                period_type text, period_start date, period_end date, metric text, target numeric, actual numeric,
@@ -607,37 +613,70 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
-  v_tz text := (select timezone from public.businesses where id = p_business_id);
+  v_tz text := (select b.timezone from public.businesses b where b.id = p_business_id);
   v_on date := coalesce(p_on, (now() at time zone v_tz)::date);
   v_money boolean := private.has_permission(p_business_id, 'analytics.financial') or private.has_permission(p_business_id, 'analytics.sales')
                      or private.has_permission(p_business_id, 'targets.manage');
+  v_all boolean := private.has_permission(p_business_id, 'targets.manage') or private.has_permission(p_business_id, 'analytics.view');
 begin
   if not private.is_member(p_business_id) then
     raise exception 'not a member' using errcode = '42501';
   end if;
   return query
+  with t as materialized (
+    select tg.*,
+           (tg.period_start::timestamp) at time zone v_tz as lo,
+           ((tg.period_start + case tg.period_type when 'month' then interval '1 month' else interval '3 months' end)::timestamp) at time zone v_tz as hi
+      from public.targets tg
+     where tg.business_id = p_business_id
+       and v_on >= tg.period_start
+       and v_on < (tg.period_start + case tg.period_type when 'month' then interval '1 month' else interval '3 months' end)::date
+       and (not p_mine_only or tg.user_id = auth.uid())
+       -- Same visibility as the table, and money targets only for those who see money (or their own).
+       and (v_all or tg.user_id = auth.uid() or (tg.scope = 'branch' and tg.branch_id = any (private.my_branch_ids())))
+       and (tg.metric not in ('revenue', 'collections') or v_money or tg.user_id = auth.uid())
+  ), w as materialized (
+    select distinct t.lo, t.hi, t.metric from t
+  ), facts as materialized (
+    select w.lo, w.hi, w.metric, l.owner_id, l.branch_id, count(*)::numeric as v
+      from w join public.leads l on l.business_id = p_business_id and l.created_at >= w.lo and l.created_at < w.hi
+     where w.metric = 'leads_handled'
+     group by 1, 2, 3, 4, 5
+    union all
+    select w.lo, w.hi, w.metric, l.owner_id, l.branch_id, count(*)::numeric
+      from w join public.leads l on l.business_id = p_business_id and l.closed_at >= w.lo and l.closed_at < w.hi
+      join public.lead_statuses st on st.id = l.status_id and st.category = 'won'
+     where w.metric = 'conversions'
+     group by 1, 2, 3, 4, 5
+    union all
+    select w.lo, w.hi, w.metric, o.owner_id, o.branch_id, sum(o.total)
+      from w join public.orders o on o.business_id = p_business_id and o.created_at >= w.lo and o.created_at < w.hi
+      join public.order_stages st on st.id = o.stage_id and st.category <> 'cancelled'
+     where w.metric = 'revenue'
+     group by 1, 2, 3, 4, 5
+    union all
+    select w.lo, w.hi, w.metric, o.owner_id, o.branch_id, sum(case when pay.kind = 'refund' then -pay.amount else pay.amount end)
+      from w join public.payments pay on pay.business_id = p_business_id and pay.received_at >= w.lo and pay.received_at < w.hi
+      join public.orders o on o.id = pay.order_id
+     where w.metric = 'collections'
+     group by 1, 2, 3, 4, 5
+  )
   select t.id, t.scope, t.branch_id, b.name, t.user_id, coalesce(p.full_name, p.email), t.period_type, t.period_start,
-         (t.period_start + case t.period_type when 'month' then interval '1 month' else interval '3 months' end)::date - 1,
-         t.metric, t.target, a.actual, round(100 * a.actual / t.target, 1),
-         round(100 * least(1, greatest(0, extract(epoch from now() - ((t.period_start::timestamp) at time zone v_tz))
-                  / extract(epoch from ((t.period_start + case t.period_type when 'month' then interval '1 month' else interval '3 months' end)::timestamp at time zone v_tz)
-                                       - ((t.period_start::timestamp) at time zone v_tz)))), 1)
-    from public.targets t
+         (t.hi at time zone v_tz)::date - 1, t.metric, t.target, a.actual, round(100 * a.actual / t.target, 1),
+         round(100 * least(1, greatest(0, extract(epoch from now() - t.lo) / extract(epoch from t.hi - t.lo))), 1)
+    from t
     left join public.branches b on b.id = t.branch_id
     left join public.profiles p on p.id = t.user_id
-    cross join lateral (select private.target_actual(t, (t.period_start::timestamp) at time zone v_tz,
-        ((t.period_start + case t.period_type when 'month' then interval '1 month' else interval '3 months' end)::timestamp) at time zone v_tz) as actual) a
-   where t.business_id = p_business_id
-     and v_on >= t.period_start
-     and v_on < (t.period_start + case t.period_type when 'month' then interval '1 month' else interval '3 months' end)::date
-     and (not p_mine_only or t.user_id = auth.uid())
-     -- Same visibility as the table, and money targets only for those who see money (or their own).
-     and (private.has_permission(p_business_id, 'targets.manage') or private.has_permission(p_business_id, 'analytics.view')
-          or t.user_id = auth.uid() or (t.scope = 'branch' and t.branch_id = any (private.my_branch_ids())))
-     and (t.metric not in ('revenue', 'collections') or v_money or t.user_id = auth.uid())
+    cross join lateral (
+      select coalesce(sum(f.v), 0) as actual from facts f
+       where f.lo = t.lo and f.hi = t.hi and f.metric = t.metric
+         and (t.scope <> 'person' or f.owner_id = t.user_id)
+         and (t.scope <> 'branch' or f.branch_id = t.branch_id)) a
    order by case t.scope when 'business' then 0 when 'branch' then 1 else 2 end, b.name, p.full_name, t.metric;
 end;
 $$;
@@ -664,6 +703,7 @@ end;
 $$;
 
 -- Everyone in the business sees it when switched on; sales managers always can.
+-- One grouped pass per measure over the period.
 create or replace function public.leaderboard(p_business_id uuid, p_from date, p_to date)
 returns table (user_id uuid, name text, branch_name text, conversions bigint, revenue numeric, collections numeric,
                leads_handled bigint, rank_conversions bigint, rank_revenue bigint)
@@ -671,39 +711,49 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
-  v_tz text := (select timezone from public.businesses where id = p_business_id);
+  v_tz text := (select b.timezone from public.businesses b where b.id = p_business_id);
   v_lo timestamptz := (p_from::timestamp) at time zone v_tz;
   v_hi timestamptz := ((p_to + 1)::timestamp) at time zone v_tz;
 begin
   if not (private.has_permission(p_business_id, 'analytics.sales')
-          or (private.is_member(p_business_id) and (select leaderboard_enabled from public.businesses where id = p_business_id))) then
+          or (private.is_member(p_business_id) and (select b.leaderboard_enabled from public.businesses b where b.id = p_business_id))) then
     raise exception 'the leaderboard is off for this business' using errcode = '42501';
   end if;
   return query
   with people as (
-    select m.user_id from public.business_memberships m
+    select m.user_id, m.id as membership_id from public.business_memberships m
       join public.role_permissions rp on rp.role_id = m.role_id and rp.permission_key = 'leads.create'
      where m.business_id = p_business_id and m.status = 'active'
+  ), conv as (
+    select l.owner_id, count(*) as n from public.leads l join public.lead_statuses s on s.id = l.status_id and s.category = 'won'
+     where l.business_id = p_business_id and l.closed_at >= v_lo and l.closed_at < v_hi group by l.owner_id
+  ), handled as (
+    select l.owner_id, count(*) as n from public.leads l
+     where l.business_id = p_business_id and l.created_at >= v_lo and l.created_at < v_hi group by l.owner_id
+  ), rev as (
+    select o.owner_id, sum(o.total) as n from public.orders o join public.order_stages s on s.id = o.stage_id and s.category <> 'cancelled'
+     where o.business_id = p_business_id and o.created_at >= v_lo and o.created_at < v_hi group by o.owner_id
+  ), coll as (
+    select o.owner_id, sum(case when pay.kind = 'refund' then -pay.amount else pay.amount end) as n
+      from public.payments pay join public.orders o on o.id = pay.order_id
+     where pay.business_id = p_business_id and pay.received_at >= v_lo and pay.received_at < v_hi group by o.owner_id
   ), stats as (
-    select pe.user_id,
-      (select count(*) from public.leads l join public.lead_statuses s on s.id = l.status_id and s.category = 'won'
-        where l.business_id = p_business_id and l.owner_id = pe.user_id and l.closed_at >= v_lo and l.closed_at < v_hi) as conversions,
-      (select coalesce(sum(o.total), 0) from public.orders o join public.order_stages s on s.id = o.stage_id and s.category <> 'cancelled'
-        where o.business_id = p_business_id and o.owner_id = pe.user_id and o.created_at >= v_lo and o.created_at < v_hi) as revenue,
-      (select coalesce(sum(case when p.kind = 'refund' then -p.amount else p.amount end), 0)
-         from public.payments p join public.orders o on o.id = p.order_id
-        where p.business_id = p_business_id and o.owner_id = pe.user_id and p.received_at >= v_lo and p.received_at < v_hi) as collections,
-      (select count(*) from public.leads l where l.business_id = p_business_id and l.owner_id = pe.user_id
-          and l.created_at >= v_lo and l.created_at < v_hi) as leads_handled
+    select pe.user_id, pe.membership_id, coalesce(c.n, 0) as conversions, coalesce(r.n, 0) as revenue,
+           coalesce(cl.n, 0) as collections, coalesce(h.n, 0) as leads_handled
       from people pe
+      left join conv c on c.owner_id = pe.user_id
+      left join rev r on r.owner_id = pe.user_id
+      left join coll cl on cl.owner_id = pe.user_id
+      left join handled h on h.owner_id = pe.user_id
   )
   select s.user_id, coalesce(pr.full_name, pr.email),
-         (select string_agg(b.name, ', ' order by b.name) from public.business_memberships m
-            join public.user_branch_access uba on uba.membership_id = m.id join public.branches b on b.id = uba.branch_id
-           where m.business_id = p_business_id and m.user_id = s.user_id),
+         (select string_agg(b.name, ', ' order by b.name) from public.user_branch_access uba
+            join public.branches b on b.id = uba.branch_id where uba.membership_id = s.membership_id),
          s.conversions, s.revenue, s.collections, s.leads_handled,
          rank() over (order by s.conversions desc), rank() over (order by s.revenue desc)
     from stats s join public.profiles pr on pr.id = s.user_id
@@ -774,6 +824,8 @@ language plpgsql
 stable
 security definer
 set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
 as $$
 #variable_conflict use_column
 declare
@@ -958,6 +1010,162 @@ end;
 $$;
 create trigger report_schedules_check before insert on public.report_schedules
   for each row execute function private.check_report_schedule();
+
+-- =====================================================================
+-- Earlier reports, rewritten for 1M leads (same results)
+-- =====================================================================
+-- Sprint 8 breakdown: orders credited to a lead group are aggregated once,
+-- instead of re-scanning the attributed orders for every group.
+create or replace function public.analytics_breakdown(p_business_id uuid, p_from date, p_to date, p_dimension text)
+returns table (key text, label text, leads bigint, won bigint, conversion_rate numeric, orders bigint, revenue numeric, spend numeric)
+language plpgsql
+stable
+security definer
+set search_path = ''
+-- Report queries vary a lot by period and dimension: always plan for the actual values.
+set plan_cache_mode = force_custom_plan
+as $$
+#variable_conflict use_column
+declare
+  v_from timestamptz;
+  v_to timestamptz;
+  v_tz text;
+  v_money boolean;
+begin
+  if not private.has_permission(p_business_id, 'analytics.view') then
+    raise exception 'not allowed to view analytics' using errcode = '42501';
+  end if;
+  select b.timezone into v_tz from public.businesses b where b.id = p_business_id;
+  v_from := (p_from::timestamp) at time zone v_tz;
+  v_to := ((p_to + 1)::timestamp) at time zone v_tz;
+  v_money := private.has_permission(p_business_id, 'analytics.financial') or private.has_permission(p_business_id, 'analytics.sales')
+             or private.has_permission(p_business_id, 'analytics.marketing');
+
+  if p_dimension = 'product' then
+    return query
+    select coalesce(i.catalog_item_id::text, lower(i.description)), max(coalesce(ci.name, i.description)),
+           null::bigint, null::bigint, null::numeric, count(distinct o.id),
+           case when v_money then sum(i.line_total) end, null::numeric
+      from public.order_items i
+      join public.orders o on o.id = i.order_id
+      join public.order_stages s on s.id = o.stage_id and s.category <> 'cancelled'
+      left join public.catalog_items ci on ci.id = i.catalog_item_id
+     where o.business_id = p_business_id and o.created_at >= v_from and o.created_at < v_to
+     group by 1 order by 7 desc nulls last limit 50;
+    return;
+  end if;
+
+  return query
+  with lead_rows as (
+    select case p_dimension
+             when 'source' then l.first_source_id::text
+             when 'branch' then l.branch_id::text
+             when 'owner' then l.owner_id::text
+             when 'campaign' then coalesce(l.first_touch ->> 'campaign_id', l.first_campaign)
+             when 'stage' then l.status_id::text
+           end as k,
+           case when p_dimension = 'campaign' then coalesce(l.first_campaign, l.first_touch ->> 'campaign_id') end as campaign_label,
+           st.category, l.customer_id, l.created_at
+      from public.leads l
+      join public.lead_statuses st on st.id = l.status_id
+     where l.business_id = p_business_id and l.created_at >= v_from and l.created_at < v_to
+  ), lead_agg as (
+    select lr.k, count(*) as leads, count(*) filter (where lr.category = 'won') as won, max(lr.campaign_label) as campaign_label
+      from lead_rows lr group by lr.k
+  ), order_agg as (
+    -- Orders credited to the lead cohort: orders by those customers since the lead was created, each once per group.
+    select x.k, count(*) as orders, sum(x.total) as revenue
+      from (select distinct lr.k, o.id, o.total
+              from lead_rows lr
+              join public.orders o on o.customer_id = lr.customer_id and o.created_at >= lr.created_at
+              join public.order_stages s on s.id = o.stage_id and s.category <> 'cancelled') x
+     group by x.k
+  ), spend_rows as (
+    select c.external_id as k, sum(d.spend) as spend
+      from public.ad_spend_daily d join public.ad_campaigns c on c.id = d.ad_campaign_id
+     where d.business_id = p_business_id and d.day between p_from and p_to
+     group by 1
+  )
+  select coalesce(la.k, '(none)'),
+         coalesce(case p_dimension
+                    when 'source' then (select src.name from public.lead_sources src where src.id::text = la.k)
+                    when 'branch' then (select b.name from public.branches b where b.id::text = la.k)
+                    when 'owner' then (select coalesce(p.full_name, p.email) from public.profiles p where p.id::text = la.k)
+                    when 'campaign' then la.campaign_label
+                    when 'stage' then (select st.name from public.lead_statuses st where st.id::text = la.k)
+                  end, 'Not set'),
+         la.leads, la.won,
+         round(100.0 * la.won / nullif(la.leads, 0), 1),
+         coalesce(oa.orders, 0),
+         case when v_money then coalesce(oa.revenue, 0) end,
+         case when p_dimension = 'campaign' and v_money then (select sr.spend from spend_rows sr where sr.k = la.k) end
+    from lead_agg la
+    left join order_agg oa on oa.k is not distinct from la.k
+   order by 3 desc
+   limit 100;
+end;
+$$;
+
+-- Sprint 6 audience: consent and suppression joined once for the whole
+-- business instead of looked up per customer. Same rules.
+create or replace function private.audience(p_business_id uuid, p_filter jsonb)
+returns table (customer_id uuid, phone text, full_name text, consent boolean, suppressed boolean)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with f as (select coalesce(p_filter, '{}') as j)
+  select c.id, c.primary_phone, c.full_name,
+         -- Hashed once per query: the customers whose latest WhatsApp marketing consent is an opt-in…
+         c.id in (select l.customer_id
+                    from (select distinct on (cc.customer_id) cc.customer_id, cc.status
+                            from public.customer_consents cc
+                           where cc.business_id = p_business_id and cc.channel = 'whatsapp' and cc.purpose = 'marketing'
+                           order by cc.customer_id, cc.captured_at desc, cc.id desc) l
+                   where l.status = 'opted_in'),
+         -- …and the suppressed numbers.
+         c.primary_phone is not null
+           and c.primary_phone in (select s.phone from public.suppressions s
+                                    where s.business_id = p_business_id and s.channel = 'whatsapp')
+    from public.customers c
+    cross join f
+   where c.business_id = p_business_id
+     and c.merged_into_id is null
+     and (f.j ->> 'branch_id' is null or c.branch_id = (f.j ->> 'branch_id')::uuid)
+     and (f.j -> 'tag_ids' is null or jsonb_array_length(f.j -> 'tag_ids') = 0
+          or exists (select 1 from public.customer_tags ct
+                      where ct.customer_id = c.id
+                        and ct.tag_id in (select (x)::uuid from jsonb_array_elements_text(f.j -> 'tag_ids') x)))
+     and (f.j -> 'lead_source_ids' is null or jsonb_array_length(f.j -> 'lead_source_ids') = 0
+          or exists (select 1 from public.leads l
+                      where l.customer_id = c.id
+                        and l.first_source_id in (select (x)::uuid from jsonb_array_elements_text(f.j -> 'lead_source_ids') x)))
+     and (f.j -> 'lead_status_ids' is null or jsonb_array_length(f.j -> 'lead_status_ids') = 0
+          or exists (select 1 from public.leads l
+                      where l.customer_id = c.id and l.archived_at is null
+                        and l.status_id in (select (x)::uuid from jsonb_array_elements_text(f.j -> 'lead_status_ids') x)))
+     and (f.j ->> 'owner_id' is null
+          or c.owner_id = (f.j ->> 'owner_id')::uuid
+          or exists (select 1 from public.leads l where l.customer_id = c.id and l.owner_id = (f.j ->> 'owner_id')::uuid))
+     and (f.j ->> 'has_orders' is null
+          or (f.j ->> 'has_orders')::boolean = exists (
+               select 1 from public.orders o join public.order_stages s on s.id = o.stage_id
+                where o.customer_id = c.id and s.category <> 'cancelled'))
+     and (f.j ->> 'no_order_days' is null
+          or not exists (select 1 from public.orders o
+                          where o.customer_id = c.id
+                            and o.created_at > now() - make_interval(days => (f.j ->> 'no_order_days')::int)))
+     and (f.j ->> 'min_lifetime_value' is null
+          or coalesce((select sum(o.total) from public.orders o join public.order_stages s on s.id = o.stage_id
+                        where o.customer_id = c.id and s.category <> 'cancelled'), 0)
+             >= (f.j ->> 'min_lifetime_value')::numeric)
+     and (f.j ->> 'created_within_days' is null
+          or c.created_at > now() - make_interval(days => (f.j ->> 'created_within_days')::int))
+     and (f.j ->> 'birthday_month' is null
+          or extract(month from c.date_of_birth) = (f.j ->> 'birthday_month')::int);
+$$;
+create index if not exists customer_consents_business_idx on public.customer_consents (business_id, channel, purpose);
 
 -- =====================================================================
 -- Grants
