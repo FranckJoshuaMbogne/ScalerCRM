@@ -172,7 +172,7 @@
 
 ## After v1.0 (Phase 4 — SaaS expansion)
 **Goal:** businesses other than MY PERFECT FIT can find SCALER, sign up, pay and run it without Springs 360 setting them up by hand.
-**Status:** planned, waiting for approval. Nothing below is built yet. Sprint 10 starts when MY PERFECT FIT has been live for two weeks without a priority-one issue.
+**Status:** approved. Sprint 10 is built ahead of the original start date. The order below still holds.
 
 | # | Sprint | Dates (2027) | Demo at sprint review |
 |---|--------|--------------|------------------------|
@@ -186,6 +186,7 @@
 
 ## Sprint 10 — Plans, limits & platform console
 **Goal:** SCALER knows what each business is entitled to, and Springs 360 can manage businesses without SQL.
+**Status:** built on branch `sprint-10/plans-limits-platform`. Decisions in [ADR 0011](adr/0011-plans-limits-platform.md). Plan prices are blank until Springs 360 sets them in Platform → Plans. The storage limit waits until attachment sizes are recorded.
 
 - Plan catalogue: `plans` with limits, `business_plan_history` (append-only). Limits cover:
   - active users;

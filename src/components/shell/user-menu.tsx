@@ -1,10 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { LogOut, ShieldCheck } from "lucide-react";
 import { PwaMenuItems } from "./pwa";
 
-export function UserMenu({ initials, name, email }: { initials: string; name: string; email: string }) {
+export function UserMenu({
+  initials,
+  name,
+  email,
+  platformAdmin = false,
+}: {
+  initials: string;
+  name: string;
+  email: string;
+  platformAdmin?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
@@ -23,6 +34,11 @@ export function UserMenu({ initials, name, email }: { initials: string; name: st
             <p className="truncate text-[13.5px] font-medium">{name}</p>
             <p className="truncate text-[12.5px] text-muted">{email}</p>
           </div>
+          {platformAdmin && (
+            <Link href="/platform" className="flex w-full items-center gap-2 px-4 py-2.5 text-[13.5px] hover:bg-paper">
+              <ShieldCheck className="size-4 text-muted" /> Platform console
+            </Link>
+          )}
           <PwaMenuItems />
           <form action="/auth/signout" method="post">
             <button className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13.5px] hover:bg-paper">

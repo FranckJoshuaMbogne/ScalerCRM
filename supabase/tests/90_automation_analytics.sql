@@ -1,5 +1,7 @@
 -- Automations, lead scoring, analytics definitions, saved views and scheduled reports.
 \set ON_ERROR_STOP on
+-- Analytics periods are business days in IST; current_date below must be the IST date.
+set timezone to 'Asia/Kolkata';
 \set QUIET on
 grant usage on schema tests to service_role;
 grant execute on all functions in schema tests to service_role;

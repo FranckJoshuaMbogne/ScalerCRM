@@ -6,6 +6,7 @@ import { BusinessSwitcher } from "./business-switcher";
 import { MobileNav } from "./mobile-nav";
 import { NotificationBell } from "./notification-bell";
 import { PwaRegister } from "./pwa";
+import { StatusBanner } from "./status-banner";
 import { SidebarNav } from "./sidebar";
 import { UserMenu } from "./user-menu";
 import { Wordmark } from "./wordmark";
@@ -33,6 +34,7 @@ async function Account() {
   const { user } = await getContext();
   return (
     <UserMenu
+      platformAdmin={user.isPlatformAdmin}
       initials={initials(user.fullName, user.email)}
       name={user.fullName ?? user.email}
       email={user.email}
@@ -75,7 +77,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Suspense>
       </header>
 
-      <main className="px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pb-10">{children}</main>
+      <main className="px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pb-10">
+        <Suspense fallback={null}>
+          <StatusBanner />
+        </Suspense>
+        {children}
+      </main>
 
       <Suspense fallback={null}>
         <MobileNav />

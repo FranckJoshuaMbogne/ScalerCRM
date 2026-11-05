@@ -150,7 +150,10 @@ reset role;
 update public.businesses set status = 'suspended' where id = :'biz_a';
 select set_config('request.jwt.claim.sub', :'alice', false);
 set role authenticated;
-select tests.ok((select count(*) = 0 from public.branches), 'suspended business data is locked');
+-- Sprint 10: a suspended business is read-only, not locked out.
+select tests.ok((select count(*) > 0 from public.branches), 'a suspended business can still read its data');
+select tests.fails(format('insert into public.branches (business_id, name) values (%L, %L)', current_setting('t.biz_a'), 'Pune'),
+                   'but cannot change it');
 reset role;
 
 \echo 'tenant isolation: all checks passed'

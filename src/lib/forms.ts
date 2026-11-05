@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { limitMessage } from "@/modules/plans/limits";
 
 /** Result returned by every server action used with useActionState. */
 export type ActionState = {
@@ -44,6 +45,11 @@ export function safeNext(next: FormDataEntryValue | string | null | undefined, f
 export function friendlyDbError(error: { code?: string; message?: string } | null): string {
   if (!error) return "Something went wrong. Try again.";
   const msg = error.message ?? "";
+  const limit = limitMessage(msg);
+  if (limit) return limit;
+  if (msg.includes("support access lasts")) return "Support access can last from 1 to 72 hours.";
+  if (msg.includes("platform admins only")) return "Only SCALER platform admins can do that.";
+  if (msg.includes("a reason is required")) return "Add a short reason. It's kept in the business's history.";
   if (msg.includes("at least one active business admin"))
     return "Every business needs at least one active business admin. Make someone else an admin first.";
   if (msg.includes("businesses_slug_key")) return "That web address is already taken. Try another.";
