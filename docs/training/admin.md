@@ -32,6 +32,13 @@
 ## 5. Automations
 Six ready-made automations are switched off at first. Turn on "Call new leads within 15 minutes" and "Chase quiet leads" in week one. Add others once the team trusts them. The run log on each automation shows what it did and why it skipped.
 
+**Building your own** (Automation → New workflow):
+- **Build on the canvas.** Each workflow starts from what triggers it. Add steps and drag from the dot under a step to the next one. An *If / else* step and a *Wait for a reply* step each have two exits.
+- **Try it before publishing.** Use **Dry run** with a real lead. It shows the path the lead would take and what each step would do, without doing anything.
+- **Publish.** Saving keeps a draft. **Publish** makes it live as a new version. Runs that already started finish on the version they started on. If a change goes wrong, **Roll back** to an earlier version.
+- **Check the steps.** Tick *Show what happened at each step* to see how many runs reached each step, which branch they took and how many failed.
+- **Emails count on your plan.** Emails sent by workflows count as messages, like WhatsApp templates.
+
 ## 6. Keeping an eye
 - **Analytics:** the executive tab every morning. Sales tab: salespeople compared fairly, adjusted for the leads they got.
 - **Audit log:** every settings change, export and import. You get a notification when someone exports 1,000 rows or more.

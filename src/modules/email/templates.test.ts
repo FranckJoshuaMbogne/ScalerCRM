@@ -76,3 +76,17 @@ describe("webhook switched-off email", () => {
     expect(e.text).toContain("https://app.example.com/settings/webhooks/abc");
   });
 });
+
+describe("workflow email", () => {
+  it("sends the business's words, escaped, with line breaks", () => {
+    const e = renderOutboxEmail(
+      "automation_email",
+      { subject: "Welcome, Neha", body: "Your fitting is booked.\n\nSee you <soon>!", business_name: "Omega Outfitters" },
+      "https://app.example.com",
+    )!;
+    expect(e.subject).toBe("Welcome, Neha");
+    expect(e.html).toContain("See you &lt;soon&gt;!");
+    expect(e.text).toContain("Sent by Omega Outfitters.");
+    expect(renderOutboxEmail("automation_email", { subject: "", body: "x" }, "https://x")).toBeNull();
+  });
+});

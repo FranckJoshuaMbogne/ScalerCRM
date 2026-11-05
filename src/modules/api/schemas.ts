@@ -357,6 +357,25 @@ export const WEBHOOK_EVENT_SCHEMAS = {
   ),
 } as const;
 
+/** Sent by a workflow's "Call a webhook" step to the endpoint it names (not subscribable). */
+export const AutomationCalledEvent = envelope(
+  "automation.called",
+  z.strictObject({
+    automation: z.strictObject({ id, name: z.string() }),
+    label: z.string().nullable(),
+    lead: Lead.nullable(),
+    customer: Customer.nullable(),
+    order: Order.nullable(),
+  }),
+  "AutomationCalledEvent",
+);
+
+/** Schema for any event type SCALER sends. */
+export function eventSchema(type: string): z.ZodType | undefined {
+  if (type === "automation.called") return AutomationCalledEvent;
+  return (WEBHOOK_EVENT_SCHEMAS as Record<string, z.ZodType>)[type];
+}
+
 /** Every registered schema by its id (for the contract tests). */
 export function schemaById(name: string): z.ZodType | undefined {
   return byId.get(name);

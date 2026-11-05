@@ -2,7 +2,7 @@ import { z } from "zod";
 import { WEBHOOK_EVENTS } from "@/modules/webhooks/events";
 import type { ApiScope } from "./scopes";
 import { API_SCOPES } from "./scopes";
-import { apiRegistry, WEBHOOK_EVENT_SCHEMAS } from "./schemas";
+import { apiRegistry, AutomationCalledEvent, WEBHOOK_EVENT_SCHEMAS } from "./schemas";
 
 /**
  * Every /api/v1 operation. The OpenAPI document, the Postman collection and
@@ -242,6 +242,16 @@ export function openApiDocument(origin: string) {
       },
     };
   }
+
+  webhooks["automation.called"] = {
+    post: {
+      summary: "Workflow step",
+      description:
+        "Sent by a workflow's \"Call a webhook\" step to the endpoint it names, with the lead, customer and order the run is about. Signed and retried like every other event.",
+      requestBody: { required: true, content: { "application/json": { schema: ref(apiRegistry.get(AutomationCalledEvent)!.id) } } },
+      responses: { "2XX": { description: "Received" } },
+    },
+  };
 
   return {
     openapi: "3.1.0",

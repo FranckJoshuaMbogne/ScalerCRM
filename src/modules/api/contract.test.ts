@@ -6,7 +6,7 @@ import { WEBHOOK_EVENTS } from "@/modules/webhooks/events";
 import { OPERATIONS, openApiDocument } from "./openapi";
 import { postmanCollection } from "./postman";
 import { type DbList, presentList, presentWrite } from "./present";
-import { apiRegistry, schemaById, WEBHOOK_EVENT_SCHEMAS } from "./schemas";
+import { apiRegistry, eventSchema, schemaById, WEBHOOK_EVENT_SCHEMAS } from "./schemas";
 
 /**
  * Contract tests: the route files, the OpenAPI document and (when
@@ -73,7 +73,7 @@ describe("the OpenAPI document", () => {
   });
 
   it("describes every webhook event", () => {
-    expect(Object.keys(doc.webhooks).sort()).toEqual(WEBHOOK_EVENTS.map((e) => e.type).sort());
+    expect(Object.keys(doc.webhooks).sort()).toEqual([...WEBHOOK_EVENTS.map((e) => e.type), "automation.called"].sort());
     for (const e of WEBHOOK_EVENTS) expect(apiRegistry.get(WEBHOOK_EVENT_SCHEMAS[e.type])).toBeDefined();
   });
 
@@ -118,8 +118,9 @@ describe.runIf(Boolean(samplesFile))("database responses", () => {
     for (const e of WEBHOOK_EVENTS) expect(seen, e.type).toContain(e.type);
     for (const row of events) {
       if (row.event_type === "ping") continue;
-      const schema = WEBHOOK_EVENT_SCHEMAS[row.event_type as keyof typeof WEBHOOK_EVENT_SCHEMAS];
-      const result = schema.safeParse(eventEnvelope(row));
+      const schema = eventSchema(row.event_type);
+      expect(schema, `${row.event_type} is documented`).toBeDefined();
+      const result = schema!.safeParse(eventEnvelope(row));
       expect(result.success, `${row.event_type}: ${JSON.stringify(result.error?.issues?.slice(0, 3))}`).toBe(true);
     }
   });

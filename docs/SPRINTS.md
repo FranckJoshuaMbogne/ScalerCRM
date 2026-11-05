@@ -262,6 +262,7 @@
 
 ## Sprint 14 — Visual workflow editor
 **Goal:** business admins build their own automations without a list of steps.
+**Status:** built on branch `sprint-14/workflow-editor`. Decisions in [ADR 0015](adr/0015-workflow-editor.md). The six presets and every existing automation were converted to graphs by the migration, and the Sprint 8 tests pass unchanged. "Wait for a reply" listens for WhatsApp replies; email replies aren't received by SCALER. "Call a webhook" sends a signed event to one of the business's Sprint 13 endpoints rather than to an arbitrary URL.
 
 - Canvas editor (React Flow) over the Sprint 8 engine. The stored format becomes a graph, and existing linear automations convert automatically.
 - New steps:

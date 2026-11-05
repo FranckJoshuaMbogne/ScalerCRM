@@ -7,64 +7,121 @@ import { type ActionState, echo, friendlyDbError } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 import { guard } from "@/modules/tenancy/guard";
 import { requirePermission } from "@/modules/tenancy/session";
-import { type Action, type Condition, TRIGGERS, validateAutomation } from "./definitions";
+import { TRIGGERS } from "./definitions";
+import { type Graph, graphErrors, MAX_NODES, newNode } from "./graph";
 
 const PERMISSION = "automation.manage" as const;
 
-/** The builder posts conditions and actions as JSON. */
-function readJson<T>(form: FormData, key: string): T[] {
+const graphSchema = z.object({ nodes: z.array(z.record(z.string(), z.unknown())).min(1).max(MAX_NODES) });
+
+function parseGraph(raw: unknown): Graph | null {
+  const parsed = graphSchema.safeParse(typeof raw === "string" ? safeJson(raw) : raw);
+  return parsed.success ? (parsed.data as unknown as Graph) : null;
+}
+
+function safeJson(raw: string): unknown {
   try {
-    const v = JSON.parse(String(form.get(key) ?? "[]"));
-    return Array.isArray(v) ? v : [];
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return null;
   }
 }
 
-export async function saveAutomation(_: ActionState, form: FormData): Promise<ActionState> {
-  return guard(async () => {
+/** Starts a new workflow: the chosen trigger and one task, as a draft. */
+export async function createWorkflow(_: ActionState, form: FormData): Promise<ActionState> {
+  const result = await guard(async () => {
     const ctx = await requirePermission(PERMISSION);
-    const id = String(form.get("automationId") ?? "");
-    const trigger = String(form.get("trigger") ?? "");
-    const triggerConfig: Record<string, unknown> = {};
-    if (trigger === "lead_idle") triggerConfig.days = Number(form.get("idleDays") ?? 3);
-    if (trigger === "lead_status_changed" && form.get("statusKey")) triggerConfig.status_key = String(form.get("statusKey"));
-    if (trigger === "order_stage_changed" && form.get("stageKey")) triggerConfig.stage_key = String(form.get("stageKey"));
-    const def = {
-      name: String(form.get("name") ?? "").trim(),
-      trigger,
-      triggerConfig,
-      conditions: readJson<Condition>(form, "conditions"),
-      actions: readJson<Action>(form, "actions"),
-    };
-    const errors = validateAutomation(def);
-    if (errors.length) return { ok: false, message: errors.join(" "), values: echo(form) };
-
-    const row = {
-      name: def.name,
-      description: String(form.get("description") ?? "").trim().slice(0, 500) || null,
-      trigger_config: def.triggerConfig,
-      conditions: def.conditions,
-      actions: def.actions,
+    const parsed = z
+      .object({
+        name: z.string().trim().min(1, "Name the workflow.").max(120),
+        trigger: z.enum(Object.keys(TRIGGERS) as [keyof typeof TRIGGERS, ...(keyof typeof TRIGGERS)[]]),
+      })
+      .safeParse({ name: form.get("name"), trigger: form.get("trigger") });
+    if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message, values: echo(form) };
+    const graph: Graph = {
+      nodes: [
+        { id: "t", kind: "trigger", trigger: parsed.data.trigger, config: parsed.data.trigger === "lead_idle" ? { days: 3 } : {}, next: "n2", x: 0, y: 0 },
+        newNode("action", "n2", 0, 140),
+      ],
     };
     const supabase = await createClient();
-    if (id) {
-      const { error } = await supabase.from("automations").update(row).eq("id", z.uuid().parse(id)).eq("business_id", ctx.business.businessId);
-      if (error) return { ok: false, message: friendlyDbError(error), values: echo(form) };
-      refresh();
-      return { ok: true, message: "Automation saved." };
-    }
-    if (!(trigger in TRIGGERS)) return { ok: false, message: "Choose what starts it." };
-    const { error } = await supabase.from("automations").insert({
-      ...row,
-      business_id: ctx.business.businessId,
-      trigger,
-      is_active: false,
-      created_by: ctx.user.id,
+    const { data, error } = await supabase.rpc("create_automation", {
+      p_business_id: ctx.business.businessId,
+      p_name: parsed.data.name,
+      p_graph: graph,
     });
     if (error) return { ok: false, message: friendlyDbError(error), values: echo(form) };
-    redirect("/automation?saved=1");
+    return { ok: true, data: { id: data as string } };
   });
+  if (result.ok && result.data?.id) redirect(`/automation/${result.data.id}`);
+  return result;
+}
+
+export type EditorResult = { ok: boolean; message: string; errors?: string[] };
+
+/** Saves the canvas as a draft. Running workflows are not affected. */
+export async function saveWorkflowDraft(id: string, graph: Graph, name: string): Promise<EditorResult> {
+  const ctx = await requirePermission(PERMISSION).catch(() => null);
+  if (!ctx) return { ok: false, message: "You can't edit automation." };
+  const g = parseGraph(graph);
+  if (!g) return { ok: false, message: "The workflow could not be read." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_automation_draft", { p_automation_id: z.uuid().parse(id), p_graph: g, p_name: name.slice(0, 120) });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  refresh();
+  return { ok: true, message: "Draft saved. Publish it to use it." };
+}
+
+/** Publishes the canvas as a new version. */
+export async function publishWorkflow(id: string, graph: Graph, name: string, note: string): Promise<EditorResult> {
+  const ctx = await requirePermission(PERMISSION).catch(() => null);
+  if (!ctx) return { ok: false, message: "You can't edit automation." };
+  const g = parseGraph(graph);
+  if (!g) return { ok: false, message: "The workflow could not be read." };
+  const errors = graphErrors(g);
+  if (errors.length) return { ok: false, message: "Fix these before publishing.", errors };
+  const supabase = await createClient();
+  const saved = await supabase.rpc("save_automation_draft", { p_automation_id: z.uuid().parse(id), p_graph: g, p_name: name.slice(0, 120) });
+  if (saved.error) return { ok: false, message: friendlyDbError(saved.error) };
+  const { data, error } = await supabase.rpc("publish_automation", { p_automation_id: id, p_graph: g, p_note: note.slice(0, 200) || null });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  refresh();
+  return { ok: true, message: `Published as version ${(data as { version: number }).version}. Runs already going finish on the version they started.` };
+}
+
+export async function rollbackWorkflow(_: ActionState, form: FormData): Promise<ActionState> {
+  return guard(async () => {
+    await requirePermission(PERMISSION);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("rollback_automation", {
+      p_automation_id: z.uuid().parse(form.get("id")),
+      p_version_id: z.uuid().parse(form.get("versionId")),
+    });
+    if (error) return { ok: false, message: friendlyDbError(error) };
+    refresh();
+    return { ok: true, message: `Rolled back: now version ${(data as { version: number }).version}.` };
+  });
+}
+
+export type DryRunStep = { node: string; kind: string; outcome: string; summary: string; action?: string };
+export type DryRun = { steps: DryRunStep[]; ended: string; errors: string[] };
+
+/** What would happen for a lead, without doing any of it. */
+export async function dryRunWorkflow(id: string, leadId: string, graph: Graph): Promise<DryRun | { error: string }> {
+  const ctx = await requirePermission(PERMISSION).catch(() => null);
+  if (!ctx) return { error: "You can't edit automation." };
+  const g = parseGraph(graph);
+  if (!g) return { error: "The workflow could not be read." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("automation_dry_run", {
+    p_automation_id: z.uuid().parse(id),
+    p_entity_type: "lead",
+    p_entity_id: z.uuid().parse(leadId),
+    p_graph: g,
+  });
+  if (error) return { error: friendlyDbError(error) };
+  const d = data as { steps: DryRunStep[]; ended?: string; errors?: string[] };
+  return { steps: d.steps ?? [], ended: d.ended ?? "done", errors: d.errors ?? [] };
 }
 
 export async function setAutomationActive(_: ActionState, form: FormData): Promise<ActionState> {

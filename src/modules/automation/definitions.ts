@@ -18,11 +18,43 @@ export const CONDITION_FIELDS = {
   has_owner: "Has an owner",
   expected_value: "Expected value",
   score: "Lead score",
+  has_email: "Customer has an email",
+  has_phone: "Customer has a phone",
+  whatsapp_opt_in: "Customer opted in to WhatsApp",
+  customer_tags: "Customer tags",
+  replied: "Customer replied on WhatsApp since the run started",
   order_total: "Order total",
+  order_balance: "Order balance due",
   stage_key: "Order stage",
 } as const;
 export type ConditionField = keyof typeof CONDITION_FIELDS;
-export type Condition = { field: ConditionField; op: "eq" | "neq" | "gte" | "lte" | "is_true" | "is_false"; value?: string };
+export type ConditionOp = "eq" | "neq" | "gte" | "lte" | "is_true" | "is_false" | "contains" | "not_contains";
+export type Condition = { field: ConditionField; op: ConditionOp; value?: string };
+
+/** Which comparisons make sense for each field. */
+export const FIELD_KIND: Record<ConditionField, "key" | "number" | "boolean" | "tags"> = {
+  source_key: "key",
+  status_key: "key",
+  status_category: "key",
+  has_owner: "boolean",
+  expected_value: "number",
+  score: "number",
+  has_email: "boolean",
+  has_phone: "boolean",
+  whatsapp_opt_in: "boolean",
+  customer_tags: "tags",
+  replied: "boolean",
+  order_total: "number",
+  order_balance: "number",
+  stage_key: "key",
+};
+
+export const OPS_FOR: Record<(typeof FIELD_KIND)[ConditionField], { value: ConditionOp; label: string }[]> = {
+  key: [{ value: "eq", label: "is" }, { value: "neq", label: "is not" }],
+  number: [{ value: "gte", label: "is at least" }, { value: "lte", label: "is at most" }],
+  boolean: [{ value: "is_true", label: "yes" }, { value: "is_false", label: "no" }],
+  tags: [{ value: "contains", label: "include" }, { value: "not_contains", label: "don't include" }],
+};
 
 export type Action =
   | { type: "create_task"; task_type: string; title: string; due_in_minutes: number; assignee: "owner" | string }
@@ -32,7 +64,10 @@ export type Action =
   | { type: "change_status"; status_key: string }
   | { type: "add_tag"; tag: string }
   | { type: "wait"; minutes: number }
-  | { type: "send_whatsapp_template"; template_id: string; variables?: { source: string; value?: string }[] };
+  | { type: "send_whatsapp_template"; template_id: string; variables?: { source: string; value?: string }[] }
+  | { type: "send_email"; to: "customer" | "owner"; subject: string; body: string }
+  | { type: "set_custom_field"; entity: "lead" | "customer" | "order"; key: string; value: string | number | boolean }
+  | { type: "call_webhook"; endpoint_id: string; label?: string };
 
 export const ACTION_LABELS: Record<Action["type"], string> = {
   create_task: "Create a task",
@@ -43,6 +78,9 @@ export const ACTION_LABELS: Record<Action["type"], string> = {
   add_tag: "Tag the customer",
   wait: "Wait",
   send_whatsapp_template: "Send a WhatsApp template",
+  send_email: "Send an email",
+  set_custom_field: "Update a custom field",
+  call_webhook: "Call a webhook",
 };
 
 const KEY = /^[a-z0-9_]+$/;
@@ -105,5 +143,11 @@ export function describeAction(x: Action, names: { person: (id: string) => strin
       return `wait ${minutes(x.minutes)}`;
     case "send_whatsapp_template":
       return "send a WhatsApp template (opted-in customers only)";
+    case "send_email":
+      return `email ${x.to === "owner" ? "the owner" : "the customer"}: “${x.subject}”`;
+    case "set_custom_field":
+      return `set the ${x.entity} field ${x.key} to ${String(x.value)}`;
+    case "call_webhook":
+      return `call a webhook${x.label ? ` (${x.label})` : ""}`;
   }
 }

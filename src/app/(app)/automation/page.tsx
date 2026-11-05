@@ -8,6 +8,7 @@ import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { addScoringRule, removeScoringRule, retryRuns, setAutomationActive } from "@/modules/automation/actions";
 import { describeAction, TRIGGERS } from "@/modules/automation/definitions";
+import type { Graph } from "@/modules/automation/graph";
 import { listAutomations, listRuns, listScoringRules } from "@/modules/automation/queries";
 import { listMembers } from "@/modules/team/queries";
 import { can, getContext } from "@/modules/tenancy/session";
@@ -26,6 +27,24 @@ const FIELDS = [
 
 const STATUS_STYLE: Record<string, string> = { done: "bg-stage-won/15", failed: "bg-danger/10 text-danger", waiting: "bg-stage-negotiation/15", skipped: "bg-line" };
 
+/** "create a task …, then notify …" for a straight line; a count of steps and branches otherwise. */
+function summarise(graph: Graph | null, names: { person: (id: string) => string | undefined }) {
+  if (!graph) return "not published yet.";
+  const branches = graph.nodes.filter((n) => n.kind === "condition" || n.kind === "wait_for_reply").length;
+  const steps = graph.nodes.filter((n) => n.kind !== "trigger");
+  const linear = graph.nodes.every((n) => n.kind !== "wait_for_reply" && (n.kind !== "condition" || !n.no));
+  if (linear) {
+    const parts = steps.map((n) =>
+      n.kind === "condition" ? `if ${n.conditions?.length ?? 0} condition${n.conditions?.length === 1 ? "" : "s"} match`
+      : n.kind === "wait" ? describeAction({ type: "wait", minutes: n.minutes ?? 0 })
+      : n.kind === "wait_until" ? "wait until the set time"
+      : n.action ? describeAction(n.action, names) : "",
+    );
+    return `${parts.join(", then ")}.`;
+  }
+  return `${steps.length} steps with ${branches} branch${branches === 1 ? "" : "es"}.`;
+}
+
 export default async function AutomationPage({ searchParams }: PageProps<"/automation">) {
   const ctx = await getContext();
   if (!can(ctx, "automation.manage")) return <NoAccess what="automation" />;
@@ -42,7 +61,7 @@ export default async function AutomationPage({ searchParams }: PageProps<"/autom
       <PageHeader
         title="Automation"
         description="SCALER acts on events: tasks, notifications, assignment and WhatsApp follow-ups. Every run is logged."
-        actions={<Link href="/automation/new" className={linkButton.primary}><Plus className="size-4" /> New automation</Link>}
+        actions={<Link href="/automation/new" className={linkButton.primary}><Plus className="size-4" /> New workflow</Link>}
       />
       {sp.saved && <p role="status" className="mb-4 rounded-[var(--radius-control)] bg-signal-soft px-3 py-2 text-[13.5px]">Saved. Switch it on when you&apos;re ready.</p>}
 
@@ -56,9 +75,11 @@ export default async function AutomationPage({ searchParams }: PageProps<"/autom
                   When {TRIGGERS[a.trigger as keyof typeof TRIGGERS]?.toLowerCase() ?? a.trigger}
                   {a.trigger === "lead_idle" ? ` (${String(a.triggerConfig.days)} days)` : ""}
                   {a.triggerConfig.status_key ? ` (${String(a.triggerConfig.status_key).replace(/_/g, " ")})` : ""}
-                  {a.triggerConfig.stage_key ? ` (${String(a.triggerConfig.stage_key).replace(/_/g, " ")})` : ""}
-                  {a.conditions.length ? `, if ${a.conditions.length} condition${a.conditions.length === 1 ? "" : "s"} match` : ""}:{" "}
-                  {a.actions.map((x) => describeAction(x, names)).join(", then ")}.
+                  {a.triggerConfig.stage_key ? ` (${String(a.triggerConfig.stage_key).replace(/_/g, " ")})` : ""}: {summarise(a.graph, names)}
+                </p>
+                <p className="text-[12px] text-muted">
+                  {a.version ? `Version ${a.version}` : "Not published"}
+                  {a.hasDraft ? " · unpublished changes" : ""}
                 </p>
               </div>
               <ActionForm action={setAutomationActive}>
