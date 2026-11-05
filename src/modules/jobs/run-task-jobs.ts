@@ -10,6 +10,7 @@ import { runScheduledReports } from "@/modules/analytics/reports";
 import { retryPendingEvents } from "@/modules/integrations/whatsapp/ingest";
 import { runPushes } from "@/modules/push/send";
 import { runWebhookDeliveries } from "@/modules/webhooks/deliver";
+import { runDomainChecks } from "@/modules/branding/jobs";
 import { reportError } from "@/lib/monitoring";
 
 /** True when the request carries `Authorization: Bearer $CRON_SECRET`. */
@@ -21,7 +22,8 @@ export function authorisedCron(request: Request) {
   return given.length === wanted.length && timingSafeEqual(given, wanted);
 }
 
-type Claimed = { id: number; to_email: string; template: string; payload: Record<string, unknown> };
+type Claimed = { id: number; to_email: string; template: string; payload: Record<string, unknown>; business_id: string | null };
+type Sender = { name: string; address: string | null };
 
 /**
  * One pass of the background work: overdue notifications, reminder queueing,
@@ -58,6 +60,7 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
   const reports = await runScheduledReports(origin).catch((e) => ({ error: e instanceof Error ? e.message : "reports failed" }));
   const push = await runPushes().catch((e) => ({ error: e instanceof Error ? e.message : "push failed" }));
   const outboundWebhooks = await runWebhookDeliveries().catch((e) => ({ error: e instanceof Error ? e.message : "webhooks failed" }));
+  const domains = await runDomainChecks().catch((e) => ({ error: e instanceof Error ? e.message : "domain checks failed" }));
   const { data: housekeeping } = await admin.rpc("housekeeping");
   // Trials ending, grace running out and reminders. Cheap; safe every run.
   const { data: billing, error: billingError } = await admin.rpc("billing_tick");
@@ -72,6 +75,16 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
 
   // Without email configured, queued reminders wait (and expire after a day).
   const mail = { sent: 0, failed: 0, skipped: !emailConfigured() };
+  // Each business's emails go out under its brand (ADR 0017).
+  const senders = new Map<string, Sender | null>();
+  const senderOf = async (businessId: string | null) => {
+    if (!businessId) return null;
+    if (!senders.has(businessId)) {
+      const { data } = await admin.rpc("email_sender", { p_business_id: businessId });
+      senders.set(businessId, (data as Sender | null) ?? null);
+    }
+    return senders.get(businessId) ?? null;
+  };
   if (!mail.skipped) {
     for (let batch = 0; batch < 5; batch++) {
       const { data, error: claimError } = await admin.rpc("claim_emails", { p_limit: 20 });
@@ -81,7 +94,7 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
       for (const row of rows) {
         const email = renderOutboxEmail(row.template, row.payload ?? {}, origin);
         const result = email
-          ? await sendEmail(row.to_email, email)
+          ? await sendEmail(row.to_email, email, { sender: await senderOf(row.business_id) })
           : { ok: false as const, error: `unknown template ${row.template}` };
         await admin.rpc("finish_email", { p_id: row.id, p_error: result.ok ? null : result.error });
         if (result.ok) mail.sent++;
@@ -99,6 +112,7 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
     reports,
     push,
     outboundWebhooks,
+    domains,
     housekeeping,
     usageSnapshot,
     rollups: rollupError ? { error: rollupError.message } : rollups,

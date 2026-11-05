@@ -55,6 +55,7 @@ export const PERMISSIONS = [
   "data.import",
   "billing.manage",
   "targets.manage",
+  "branding.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

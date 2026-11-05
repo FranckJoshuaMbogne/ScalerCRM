@@ -7,7 +7,8 @@ import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 import { initialState } from "@/lib/forms";
 import { sendMagicLink, signIn } from "@/modules/auth/actions";
 
-export function LoginForm() {
+/** `brandName` is set on a business's own domain: no SCALER sign-up there, only its team signs in. */
+export function LoginForm({ brandName = null }: { brandName?: string | null }) {
   const params = useSearchParams();
   const next = params.get("next") ?? "";
   const linkError = params.get("error") === "link";
@@ -18,12 +19,16 @@ export function LoginForm() {
   return (
     <>
       <h1 className="text-[24px] font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-1 mb-6 text-[14px] text-muted">
-        New to SCALER?{" "}
-        <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-medium text-signal hover:underline">
-          Create an account
-        </Link>
-      </p>
+      {brandName ? (
+        <p className="mt-1 mb-6 text-[14px] text-muted">Use the account your {brandName} admin invited.</p>
+      ) : (
+        <p className="mt-1 mb-6 text-[14px] text-muted">
+          New to SCALER?{" "}
+          <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-medium text-signal hover:underline">
+            Create an account
+          </Link>
+        </p>
+      )}
 
       {linkError && (
         <p role="alert" className="mb-4 rounded-[var(--radius-control)] bg-danger/10 px-3 py-2 text-[13.5px] text-danger">

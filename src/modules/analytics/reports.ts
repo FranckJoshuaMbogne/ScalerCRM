@@ -20,7 +20,7 @@ export async function runScheduledReports(origin: string) {
       const branchName = s.branch_id ? ((pack.branches ?? []).find((b) => b.branch_id === s.branch_id)?.branch_name as string | undefined) : null;
       const query = new URLSearchParams({ kind: s.report, from: s.period_from, to: s.period_to, ...(s.branch_id ? { branch: s.branch_id } : {}) });
       const email = packEmail(pack, { businessName: s.business_name, currency: s.currency, url: `${origin}/analytics/pack?${query}`, branchName });
-      const r = await sendEmail(s.email, email, packFiles(pack));
+      const r = await sendEmail(s.email, email, { attachments: packFiles(pack) });
       if (r.ok) sent++;
       else console.error("[reports]", r.error);
       continue;

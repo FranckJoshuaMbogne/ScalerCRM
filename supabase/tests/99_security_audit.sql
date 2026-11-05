@@ -46,8 +46,9 @@ select tests.ok((
    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')
 ) = array['api_create_order', 'api_create_task', 'api_create_webhook', 'api_delete_webhook', 'api_get', 'api_key_business',
            'api_list', 'api_list_webhooks', 'api_rate', 'api_rate_limit', 'api_submit_lead', 'api_update_lead',
-           'api_update_order', 'api_update_webhook', 'get_invitation', 'health', 'signup_check'],
-  'the anonymous role can call only the public API, invitations, health and the sign-up check');
+           'api_update_order', 'api_update_webhook', 'brand_asset_for_host', 'brand_for_host', 'get_invitation', 'health',
+           'signup_check'],
+  'the anonymous role can call only the public API, invitations, health, the sign-up check and the brand of a custom domain');
 
 -- And can't touch any table or view directly.
 select tests.ok(not exists (
@@ -72,7 +73,9 @@ select tests.ok(not exists (
                        'whatsapp_account_token', 'integration_token', 'claim_campaign_batch', 'claim_automation_runs',
                        'step_automation_run', 'claim_report_schedules', 'claim_push_batch', 'record_job_heartbeat',
                        'housekeeping', 'run_task_jobs', 'billing_ingest', 'billing_tick', 'billing_save_provider_plan',
-                       'snapshot_usage', 'claim_webhook_deliveries', 'finish_webhook_delivery', 'prune_webhook_log')
+                       'snapshot_usage', 'claim_webhook_deliveries', 'finish_webhook_delivery', 'prune_webhook_log',
+                       'refresh_analytics_rollups', 'report_pack_for', 'record_custom_domain', 'record_email_domain',
+                       'domains_to_check', 'email_sender')
      and has_function_privilege('authenticated', p.oid, 'execute')),
   'background-job functions are reserved for the service role');
 

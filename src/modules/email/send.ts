@@ -11,10 +11,24 @@ export type SendResult = { ok: true; id: string | null } | { ok: false; error: s
 /** Sends one email through Resend's HTTP API. Never throws. */
 export type Attachment = { filename: string; content: string };
 
-export async function sendEmail(to: string, email: RenderedEmail, attachments: Attachment[] = []): Promise<SendResult> {
+/** The sender for a business: its verified domain, else SCALER's address under the business's name (ADR 0017). */
+export function senderFor(sender: { name: string; address: string | null } | null, fallback: string): string {
+  if (!sender) return fallback;
+  const address = sender.address ?? fallback.match(/<([^>]+)>/)?.[1] ?? fallback.trim();
+  const name = sender.name.replace(/["<>\r\n]/g, "").slice(0, 60);
+  return name ? `"${name}" <${address}>` : address;
+}
+
+export async function sendEmail(
+  to: string,
+  email: RenderedEmail,
+  options: { attachments?: Attachment[]; sender?: { name: string; address: string | null } | null } = {},
+): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-  if (!key || !from) return { ok: false, error: "email is not configured" };
+  const configured = process.env.EMAIL_FROM;
+  if (!key || !configured) return { ok: false, error: "email is not configured" };
+  const from = senderFor(options.sender ?? null, configured);
+  const attachments = options.attachments ?? [];
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

@@ -9,7 +9,7 @@ import { PwaRegister } from "./pwa";
 import { StatusBanner } from "./status-banner";
 import { SidebarNav } from "./sidebar";
 import { UserMenu } from "./user-menu";
-import { Wordmark } from "./wordmark";
+import { BrandMark, BrandShortName, BrandStyle, PoweredBy } from "./brand";
 
 async function Switcher() {
   const ctx = await getContext();
@@ -46,18 +46,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh lg:pl-64">
       <PwaRegister />
+      <Suspense fallback={null}>
+        <BrandStyle />
+      </Suspense>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col gap-5 overflow-y-auto bg-ink py-5 lg:flex">
-        <Wordmark className="px-6" />
+        <Suspense fallback={<span className="block h-7" />}>
+          <BrandMark className="px-6" />
+        </Suspense>
         <Suspense fallback={<div className="mx-3 h-[52px] rounded-[var(--radius-control)] bg-ink-2" />}>
           <Switcher />
         </Suspense>
         <Suspense fallback={null}>
           <SidebarNav />
         </Suspense>
+        <Suspense fallback={null}>
+          <PoweredBy className="mt-auto px-6" />
+        </Suspense>
       </aside>
 
       <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
-        <span className="font-semibold tracking-[0.08em] lg:hidden">SCALER</span>
+        <Suspense fallback={null}>
+          <BrandShortName />
+        </Suspense>
         <form action="/customers" role="search" className="relative ml-auto w-full max-w-sm lg:ml-0">
           <label htmlFor="global-search" className="sr-only">Search customers by name, phone or CIF</label>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />

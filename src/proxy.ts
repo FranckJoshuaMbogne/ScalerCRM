@@ -6,7 +6,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // /offline and /sw.js must load without a session (the service worker installs them).
 const PUBLIC_PREFIXES = [
   "/login", "/signup", "/auth", "/invite", "/offline", "/sw.js",
-  "/api/v1", "/api/cron", "/api/webhooks", "/api/health", "/scaler-touch.js", "/developers",
+  "/api/v1", "/api/cron", "/api/webhooks", "/api/health", "/scaler-touch.js", "/developers", "/brand", "/wrong-workspace",
 ];
 
 function isPublic(pathname: string) {

@@ -56,6 +56,11 @@ export default async function SettingsPage() {
                 Webhooks
               </Link>
             )}
+            {can(ctx, "branding.manage") && (
+              <Link href="/settings/brand" className={linkButton.secondary}>
+                Brand
+              </Link>
+            )}
             {manageBusiness && (
               <Link href="/settings/plan" className={linkButton.secondary}>
                 Plan and usage

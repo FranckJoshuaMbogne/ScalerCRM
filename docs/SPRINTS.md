@@ -297,6 +297,7 @@
 
 ## Sprint 16 — White-label
 **Goal:** resellers and larger brands run SCALER under their own name.
+**Status:** built on branch `sprint-16/white-label`. Decisions in [ADR 0017](adr/0017-white-label.md). Per-business branding, custom domains (Vercel Domains API), branded email (Resend) and "Powered by SCALER" by plan are built. Reseller accounts wait for a signed reseller, as the default decision says. Two tenants on different domains in one deployment are checked by `scripts/white-label-check.sh` and `988_white_label.sql`.
 
 - Brand settings per business (or per reseller account): logo, colours (checked for contrast), app name, support contact, sign-in page.
 - Custom domain per tenant through the hosting provider's domains API: DNS instructions, verification, automatic TLS. Sign-in and the PWA manifest/icons are served per domain.
@@ -321,4 +322,4 @@
 | Springs 360 GST registration and invoice details | Before Sprint 11 | — needed to issue tax invoices; billing ships in test mode without it |
 | Industry templates for onboarding | Sprint 12 | Tailoring (MY PERFECT FIT's setup), salon, clinic, real estate, retail |
 | API versioning and deprecation policy | Sprint 13 | `/api/v1` stable; breaking changes only in `/v2`, with 6 months' notice |
-| White-label demand (resellers vs single brands) | Before Sprint 16 | Build per-business branding first; reseller accounts only if a reseller has signed |
+| White-label demand (resellers vs single brands) | **Defaulted** | Per-business branding built in Sprint 16; reseller accounts only if a reseller has signed |

@@ -45,7 +45,16 @@ Six ready-made automations are switched off at first. Turn on "Call new leads wi
 - **Leaderboard:** off until you switch it on in Settings. When on, everyone sees the ranking.
 - **Report packs:** in Reports, schedule the owner, branch manager or marketing pack weekly or monthly. They arrive by email with CSV files attached. "See a pack now" shows the same pack, ready to save as PDF.
 
-## 7. Keeping an eye
+## 7. Your brand
+Settings → Brand:
+- **Name and colours:** your app name, colours (the screen warns if text would be hard to read), support contact, logo and home-screen icon.
+- **Plans:** on Scale and above you can also:
+  - run SCALER on your own address, such as crm.yourbrand.in: add the DNS record shown and it goes live with HTTPS, usually within an hour;
+  - send emails from your own domain;
+  - hide "Powered by SCALER".
+- **On your own address** only your team can sign in, and the app installs on phones under your name and icon.
+
+## 8. Keeping an eye
 - **Analytics:** the executive tab every morning. Sales tab: salespeople compared fairly, adjusted for the leads they got.
 - **Audit log:** every settings change, export and import. You get a notification when someone exports 1,000 rows or more.
 - **Exports** are limited to 20 an hour per person. That's enough for real work, and slows down anyone copying the database.

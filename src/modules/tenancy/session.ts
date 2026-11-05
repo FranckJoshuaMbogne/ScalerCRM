@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Permission } from "@/modules/permissions/catalog";
+import { resolveActiveBusiness } from "@/modules/branding/brand";
+import { hostBrand } from "@/modules/branding/host";
 
 export const ACTIVE_BUSINESS_COOKIE = "scaler_business";
 
@@ -124,11 +126,18 @@ export const getContext = cache(async (): Promise<TenantContext> => {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const [memberships, profile] = await Promise.all([getMemberships(), getProfile()]);
-  if (memberships.length === 0) redirect(profile?.is_platform_admin ? "/platform" : "/onboarding");
+  const [allMemberships, profile, brand] = await Promise.all([getMemberships(), getProfile(), hostBrand()]);
+  // On a business's own domain only that business opens (ADR 0017); nobody else's session works there.
+  const hostBusinessId = brand?.business_id ?? null;
+  if (allMemberships.length === 0) {
+    redirect(hostBusinessId ? "/wrong-workspace" : profile?.is_platform_admin ? "/platform" : "/onboarding");
+  }
 
   const wanted = (await cookies()).get(ACTIVE_BUSINESS_COOKIE)?.value;
-  const business = memberships.find((m) => m.businessId === wanted) ?? memberships[0];
+  const resolved = resolveActiveBusiness(allMemberships, hostBusinessId, wanted);
+  if (!resolved.business) redirect("/wrong-workspace");
+  const business = resolved.business;
+  const memberships = resolved.locked ? [business] : allMemberships;
 
   const supabase = await createClient();
   const { data: perms, error } = await supabase.rpc("my_permissions", { p_business_id: business.businessId });

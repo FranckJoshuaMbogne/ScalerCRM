@@ -59,6 +59,10 @@ Record each run in the release checklist ([docs/release-checklist.md](../release
 11. **Branch reporting (Sprint 15, ADR 0016).**
     - Nothing to configure. After the release, the job route fills the analytics rollups 60 days a pass, so the history is done within a few passes. `refresh_analytics_rollups` appears as `rollups` in the job heartbeat.
     - Migration `20270614000000` adds indexes on walk-ins and appointments, which are small tables.
+12. **White-label (Sprint 16, ADR 0017).**
+    - Create a Vercel token that can manage this project's domains. Set `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID` and, for a team, `VERCEL_TEAM_ID`. Without them, tenants' domains are added to the project by hand.
+    - Branded senders use the existing `RESEND_API_KEY`. The Resend plan must allow as many domains as white-label tenants.
+    - Check after each release: `scripts/white-label-check.sh` (two tenants on two domains, no brand or cookie leakage).
 
 ## Every release
 
