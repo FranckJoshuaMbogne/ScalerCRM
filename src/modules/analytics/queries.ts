@@ -79,7 +79,7 @@ export async function listReportSchedules(businessId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("report_schedules")
-    .select("id, report, frequency, next_run_at, last_sent_at, is_active")
+    .select("id, report, frequency, next_run_at, last_sent_at, is_active, branch_id")
     .eq("business_id", businessId)
     .order("created_at");
   return data ?? [];

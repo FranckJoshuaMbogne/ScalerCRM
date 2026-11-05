@@ -73,6 +73,23 @@ select loadtest.bench('PIC performance, 90 days', $q$
   select * from public.pic_performance(current_setting('load.biz')::uuid, current_date - 90, current_date)$q$, 2000);
 select loadtest.bench('operations summary', $q$
   select public.operations_summary(current_setting('load.biz')::uuid)$q$, 1000);
+select loadtest.bench('branch comparison, 12 months', $q$
+  select count(*) from public.branch_comparison(current_setting('load.biz')::uuid, current_date - 365, current_date)$q$, 2000);
+select loadtest.bench('branch comparison, 30 days', $q$
+  select count(*) from public.branch_comparison(current_setting('load.biz')::uuid, current_date - 30, current_date)$q$, 1000);
+select loadtest.bench('team report for a branch, 90 days', $q$
+  select count(*) from public.team_performance(current_setting('load.biz')::uuid,
+    (select id from public.branches where business_id = current_setting('load.biz')::uuid order by name limit 1), current_date - 90, current_date)$q$, 1000);
+select loadtest.bench('lead transfers, 12 months', $q$
+  select count(*) from public.transfer_report(current_setting('load.biz')::uuid, current_date - 365, current_date)$q$, 1000);
+select loadtest.bench('leaderboard, this month', $q$
+  select count(*) from public.leaderboard(current_setting('load.biz')::uuid, date_trunc('month', current_date)::date, current_date)$q$, 1000);
+insert into public.targets (business_id, scope, branch_id, period_type, period_start, metric, target, created_by)
+select current_setting('load.biz')::uuid, 'branch', b.id, 'month', date_trunc('month', current_date), m, 100, auth.uid()
+  from public.branches b cross join unnest(array['leads_handled', 'conversions', 'revenue', 'collections']) m
+ where b.business_id = current_setting('load.biz')::uuid;
+select loadtest.bench('targets: 40 branch targets with progress', $q$
+  select count(*) from public.target_progress(current_setting('load.biz')::uuid)$q$, 1000);
 select loadtest.bench('campaign audience estimate (all)', $q$
   select public.audience_estimate(current_setting('load.biz')::uuid, '{}')$q$, 2000);
 select loadtest.bench('launch a 60k-recipient campaign', $q$

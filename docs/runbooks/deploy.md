@@ -56,6 +56,9 @@ Record each run in the release checklist ([docs/release-checklist.md](../release
     - Migration `20270517000000` builds four indexes on customers, leads, orders and payments. They block writes to those tables while they build: a few seconds at MY PERFECT FIT's size. Ship it in the evening window.
     - Existing API keys become `leads:write` keys, so website forms keep working. Check one form submission after the release.
     - The public reference is at `/developers`. Tell partners about `/api/v1/openapi.json` and the Postman collection.
+11. **Branch reporting (Sprint 15, ADR 0016).**
+    - Nothing to configure. After the release, the job route fills the analytics rollups 60 days a pass, so the history is done within a few passes. `refresh_analytics_rollups` appears as `rollups` in the job heartbeat.
+    - Migration `20270614000000` adds indexes on walk-ins and appointments, which are small tables.
 
 ## Every release
 

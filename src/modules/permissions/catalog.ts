@@ -54,6 +54,7 @@ export const PERMISSIONS = [
   "audit.view",
   "data.import",
   "billing.manage",
+  "targets.manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

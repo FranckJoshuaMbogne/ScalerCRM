@@ -7,6 +7,8 @@ import { TASK_TYPE_LABELS } from "@/modules/leads/timeline";
 import { listMyDay } from "@/modules/tasks/queries";
 import { bucketFor, followUpPresets, toLocalInput } from "@/modules/tasks/schedule";
 import { listMembers } from "@/modules/team/queries";
+import { TargetList } from "@/components/crm/target-list";
+import { getTargetProgress } from "@/modules/branch-reporting/queries";
 import { can, getContext } from "@/modules/tenancy/session";
 
 export const metadata = { title: "My day" };
@@ -32,9 +34,10 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
   const tz = ctx.business.timezone;
   const now = new Date();
 
-  const [{ open, done }, members] = await Promise.all([
+  const [{ open, done }, members, myTargets] = await Promise.all([
     listMyDay(ctx.business.businessId, { who, userId: ctx.user.id }, tz, now),
     listMembers(ctx.business.businessId),
+    getTargetProgress(ctx.business.businessId, { mineOnly: true }),
   ]);
   const people = new Map(members.map((m) => [m.userId, m.name]));
   const active = members.filter((m) => m.status === "active");
@@ -58,6 +61,13 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
             : "Your follow-ups: overdue first, then today and the week ahead."
         }
       />
+
+      {who === "me" && myTargets.length > 0 && (
+        <Panel className="mb-4">
+          <h2 className="border-b border-line px-5 py-3 text-[15px] font-semibold">My targets</h2>
+          <TargetList targets={myTargets} currency={ctx.business.currency} showWho={false} />
+        </Panel>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <nav aria-label="Whose tasks" className="flex gap-1">

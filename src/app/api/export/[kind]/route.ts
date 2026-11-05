@@ -1,4 +1,6 @@
 import { toCsv } from "@/lib/csv";
+import { PACKS, type PackKind, packSectionCsv } from "@/modules/branch-reporting/pack";
+import { getPack } from "@/modules/branch-reporting/queries";
 import { createClient } from "@/lib/supabase/server";
 import { can, getContext } from "@/modules/tenancy/session";
 
@@ -111,6 +113,17 @@ export async function GET(request: Request, routeCtx: RouteContext<"/api/export/
       { header: "Paid", value: (r) => bal.get(r.id)?.net_paid },
       { header: "Balance", value: (r) => bal.get(r.id)?.balance },
     ]);
+  } else if (kind === "pack") {
+    // One table of a report pack (Sprint 15), as the person sees it in the app.
+    if (!can(ctx, "analytics.view")) return new Response("forbidden", { status: 403 });
+    const packKind = url.searchParams.get("pack") ?? "";
+    const section = url.searchParams.get("section") ?? "";
+    if (!(packKind in PACKS) || !from || !to) return new Response("not found", { status: 404 });
+    const pack = await getPack(biz, packKind as PackKind, url.searchParams.get("branch"), from, to);
+    const out = pack ? packSectionCsv(pack, section) : null;
+    if (!out) return new Response("not found", { status: 404 });
+    csv = out;
+    rows = Math.max(0, out.split("\r\n").length - 2);
   } else {
     return new Response("not found", { status: 404 });
   }

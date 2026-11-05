@@ -3,6 +3,8 @@ import { ActionForm } from "@/components/ui/action-form";
 import { SubmitButton } from "@/components/ui/form";
 import { linkButton, PageHeader, Panel } from "@/components/ui/primitives";
 import { setBranchActive } from "@/modules/settings/actions";
+import { setLeaderboard } from "@/modules/branch-reporting/actions";
+import { leaderboardEnabled } from "@/modules/branch-reporting/queries";
 import { getBusinessProfile } from "@/modules/settings/queries";
 import { listBranches } from "@/modules/team/queries";
 import { can, getContext } from "@/modules/tenancy/session";
@@ -13,7 +15,7 @@ export const metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const ctx = await getContext();
   const id = ctx.business.businessId;
-  const [profile, branches] = await Promise.all([getBusinessProfile(id), listBranches(id)]);
+  const [profile, branches, boardOn] = await Promise.all([getBusinessProfile(id), listBranches(id), leaderboardEnabled(id)]);
   const manageBusiness = can(ctx, "settings.business.manage");
   const manageBranches = can(ctx, "settings.branches.manage");
 
@@ -87,6 +89,23 @@ export default async function SettingsPage() {
         <h2 className="mb-4 text-[15px] font-semibold">Business</h2>
         <BusinessForm profile={profile} disabled={!manageBusiness} />
       </Panel>
+
+      {manageBusiness && (
+        <Panel className="mb-6 flex flex-wrap items-center gap-4 p-5">
+          <div className="min-w-[240px] flex-1">
+            <h2 className="text-[15px] font-semibold">Leaderboard</h2>
+            <p className="text-[13px] text-muted">
+              {boardOn
+                ? "On: everyone in the business sees who converted and collected most."
+                : "Off: only sales managers see how salespeople compare. Switch it on to show everyone a ranking."}
+            </p>
+          </div>
+          <ActionForm action={setLeaderboard}>
+            <input type="hidden" name="enabled" value={String(!boardOn)} />
+            <SubmitButton variant={boardOn ? "secondary" : "primary"}>{boardOn ? "Switch off" : "Switch on"}</SubmitButton>
+          </ActionForm>
+        </Panel>
+      )}
 
       <Panel className="mb-6">
         <h2 className="border-b border-line px-5 py-3.5 text-[15px] font-semibold">

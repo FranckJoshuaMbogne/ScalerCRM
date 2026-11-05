@@ -15,6 +15,8 @@ import { SubmitButton } from "@/components/ui/form";
 import { dismissChecklist } from "@/modules/onboarding/actions";
 import { getOnboarding } from "@/modules/onboarding/queries";
 import { nextStep, progress, showChecklist, STEPS } from "@/modules/onboarding/steps";
+import { TargetList } from "@/components/crm/target-list";
+import { getLeaderboard, getTargetProgress, leaderboardEnabled } from "@/modules/branch-reporting/queries";
 
 export const metadata = { title: "Dashboard" };
 
@@ -177,6 +179,46 @@ async function Breakdowns() {
   );
 }
 
+/** This period's targets the person can see, and the leaderboard's top three when it's on. */
+async function Targets() {
+  const ctx = await getContext();
+  const id = ctx.business.businessId;
+  const today = localDateKey(new Date(), ctx.business.timezone);
+  const [targets, boardOn] = await Promise.all([getTargetProgress(id), leaderboardEnabled(id)]);
+  const board = boardOn ? await getLeaderboard(id, `${today.slice(0, 8)}01`, today) : null;
+  if (!targets.length && !board?.length) return null;
+  return (
+    <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+      {targets.length > 0 && (
+        <Panel>
+          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+            <h2 className="text-[15px] font-semibold">Targets</h2>
+            <Link href="/analytics/targets" className="text-[13px] text-signal hover:underline">All targets</Link>
+          </div>
+          <TargetList targets={targets.slice(0, 6)} currency={ctx.business.currency} />
+        </Panel>
+      )}
+      {board && board.length > 0 && (
+        <Panel>
+          <div className="flex items-center justify-between border-b border-line px-5 py-3">
+            <h2 className="text-[15px] font-semibold">This month&apos;s leaders</h2>
+            <Link href="/leaderboard" className="text-[13px] text-signal hover:underline">Leaderboard</Link>
+          </div>
+          <ol className="divide-y divide-line text-[13.5px]">
+            {board.slice(0, 3).map((r) => (
+              <li key={r.user_id} className="flex items-center gap-3 px-5 py-2.5">
+                <span className="w-5 font-semibold text-muted">{r.rank_conversions}</span>
+                <span className="flex-1">{r.name}</span>
+                <span className="tabular-nums text-muted">{r.conversions} won</span>
+              </li>
+            ))}
+          </ol>
+        </Panel>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   return (
     <>
@@ -196,6 +238,10 @@ export default function DashboardPage() {
 
       <Suspense fallback={null}>
         <Today />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <Targets />
       </Suspense>
 
       <Suspense fallback={<Panel className="mb-6 h-[104px]" />}>

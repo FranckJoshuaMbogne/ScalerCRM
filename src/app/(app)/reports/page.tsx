@@ -7,6 +7,7 @@ import { EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
 import { formatDateTime } from "@/lib/format";
 import { removeSchedule, scheduleReport } from "@/modules/analytics/actions";
 import { listReportSchedules } from "@/modules/analytics/queries";
+import { reportBranches } from "@/modules/branch-reporting/queries";
 import { emailConfigured } from "@/modules/email/send";
 import { can, getContext } from "@/modules/tenancy/session";
 
@@ -17,12 +18,16 @@ const REPORTS = [
   { value: "marketing", label: "Marketing" },
   { value: "sales", label: "Sales" },
   { value: "operations", label: "Operations" },
+  { value: "pack_owner", label: "Owner pack (all branches, CSV attached)" },
+  { value: "pack_branch", label: "Branch manager pack (one branch, CSV attached)" },
+  { value: "pack_marketing", label: "Marketing pack (sources and campaigns, CSV attached)" },
 ];
 
 export default async function ReportsPage() {
   const ctx = await getContext();
   if (!can(ctx, "analytics.view") && !can(ctx, "reports.export")) return <NoAccess what="reports" />;
-  const schedules = await listReportSchedules(ctx.business.businessId);
+  const [schedules, branches] = await Promise.all([listReportSchedules(ctx.business.businessId), reportBranches(ctx.business.businessId)]);
+  const branchName = new Map(branches.map((b) => [b.id, b.name]));
   const exports = [
     { href: "/api/export/leads", label: "All leads", note: "Stage, source, campaign, owner, score", show: can(ctx, "leads.export") },
     { href: "/api/export/customers", label: "Customer files", note: "CIF, contact details", show: can(ctx, "customers.export") },
@@ -57,7 +62,10 @@ export default async function ReportsPage() {
             <ul className="divide-y divide-line">
               {schedules.map((s) => (
                 <li key={s.id} className="flex flex-wrap items-center gap-x-3 px-5 py-2.5 text-[13.5px]">
-                  <span className="font-medium">{REPORTS.find((r) => r.value === s.report)?.label}</span>
+                  <span className="font-medium">
+                    {REPORTS.find((r) => r.value === s.report)?.label.replace(/ \(.*\)$/, "")}
+                    {s.branch_id ? ` · ${branchName.get(s.branch_id) ?? "branch"}` : ""}
+                  </span>
                   <span className="text-muted">{s.frequency}</span>
                   <span className="text-[12.5px] text-muted">next {formatDateTime(s.next_run_at, ctx.business.timezone)}</span>
                   <ActionForm action={removeSchedule} className="ml-auto">
@@ -70,12 +78,16 @@ export default async function ReportsPage() {
             <ActionForm action={scheduleReport} className="flex flex-wrap items-end gap-2 border-t border-line p-5">
               <SelectField label="Report" name="report" options={REPORTS} />
               <SelectField label="How often" name="frequency" options={[{ value: "daily", label: "Daily" }, { value: "weekly", label: "Weekly (Mondays)" }, { value: "monthly", label: "Monthly (1st)" }]} />
+              <SelectField label="Branch (branch pack)" name="branchId" options={[{ value: "", label: "—" }, ...branches.map((b) => ({ value: b.id, label: b.name }))]} />
               <SubmitButton variant="secondary">Email it to me</SubmitButton>
             </ActionForm>
           </Panel>
         )}
       </div>
-      <p className="mt-6 text-[13px]"><Link href="/analytics" className="text-signal hover:underline">Open the dashboards</Link></p>
+      <p className="mt-6 flex flex-wrap gap-4 text-[13px]">
+        <Link href="/analytics" className="text-signal hover:underline">Open the dashboards</Link>
+        {can(ctx, "analytics.view") && <Link href="/analytics/pack?kind=pack_owner" className="text-signal hover:underline">See a pack now (printable)</Link>}
+      </p>
     </>
   );
 }

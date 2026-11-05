@@ -21,6 +21,8 @@ run() { psql "$LOAD_URL" -X -q -v ON_ERROR_STOP=1 -f "$1" 2>&1 | sed -E "s/^psql
 run "$ROOT/supabase/tests/00_bootstrap_plain_postgres.sql" >/dev/null
 for f in "$ROOT"/supabase/migrations/*.sql; do run "$f" >/dev/null; done
 start=$(date +%s)
-run "$ROOT/scripts/load/seed.sql"
+# LOAD_LEADS=1000000 seeds the Sprint 15 size (1M leads across 10 branches); the default is 150k.
+psql "$LOAD_URL" -X -q -v ON_ERROR_STOP=1 ${LOAD_LEADS:+-v leads="$LOAD_LEADS"} -f "$ROOT/scripts/load/seed.sql" 2>&1 \
+  | sed -E "s/^psql:[^ ]+ NOTICE:  /  /" | { grep -v '^  ok - ' || true; }
 echo "seeded in $(( $(date +%s) - start ))s"
 run "$ROOT/scripts/load/bench.sql"

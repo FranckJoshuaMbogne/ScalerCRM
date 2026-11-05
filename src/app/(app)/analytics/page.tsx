@@ -62,6 +62,8 @@ export default async function AnalyticsPage({ searchParams }: PageProps<"/analyt
         description={`${period.label} (${period.from} to ${period.to}), compared with ${prev.from} to ${prev.to}.`}
         actions={
           <>
+            <Link href="/analytics/branches" className={linkButton.secondary}>Branches</Link>
+            <Link href="/analytics/targets" className={linkButton.secondary}>Targets</Link>
             <Link href="/analytics/attribution" className={linkButton.secondary}>Attribution</Link>
             {can(ctx, "reports.export") && (
               <a href={`/api/export/orders?from=${period.from}&to=${period.to}`} className={linkButton.secondary}><Download className="size-4" /> Orders CSV</a>

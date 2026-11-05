@@ -58,14 +58,21 @@ function firstRun(frequency: "daily" | "weekly" | "monthly", tz: string) {
 export async function scheduleReport(_: ActionState, form: FormData): Promise<ActionState> {
   return guard(async () => {
     const ctx = await requirePermission("analytics.view");
-    const report = z.enum(["executive", "marketing", "sales", "operations"]).parse(form.get("report"));
+    const report = z
+      .enum(["executive", "marketing", "sales", "operations", "pack_owner", "pack_branch", "pack_marketing"])
+      .parse(form.get("report"));
     const frequency = z.enum(["daily", "weekly", "monthly"]).parse(form.get("frequency"));
+    // Packs are weekly or monthly; a branch manager's pack is for one branch.
+    if (report.startsWith("pack_") && frequency === "daily") return { ok: false, message: "Packs come weekly or monthly." };
+    const branchId = report === "pack_branch" ? z.uuid().safeParse(form.get("branchId")) : null;
+    if (branchId && !branchId.success) return { ok: false, message: "Choose the branch for the pack." };
     const supabase = await createClient();
     const { error } = await supabase.from("report_schedules").insert({
       business_id: ctx.business.businessId,
       user_id: ctx.user.id,
       report,
       frequency,
+      branch_id: branchId?.data ?? null,
       next_run_at: firstRun(frequency, ctx.business.timezone).toISOString(),
     });
     if (error) {

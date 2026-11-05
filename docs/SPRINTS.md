@@ -284,6 +284,7 @@
 
 ## Sprint 15 — Multi-branch reporting & targets
 **Goal:** owners with several branches compare them fairly and manage to targets.
+**Status:** built on branch `sprint-15/branch-reporting-targets`. Decisions in [ADR 0016](adr/0016-branch-reporting-and-targets.md). Rollups are read only where they are exact, and dirty or recent days are read live, so they never change an answer. Packs arrive as an email with every table attached as CSV, plus a printable page for the PDF. Ad spend and first-reply times stay business-wide, because campaigns and messages have no branch. Load test at 1M leads across 10 branches: see [load-test.md](load-test.md).
 
 - Branch comparison: every Sprint 8 metric side by side per branch, with cohort rules and source-mix normalisation (as for salespeople).
 - Targets: monthly and quarterly targets per branch and per person (leads handled, conversions, revenue, collections), with progress on the dashboard and My day.

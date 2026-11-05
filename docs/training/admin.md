@@ -39,7 +39,13 @@ Six ready-made automations are switched off at first. Turn on "Call new leads wi
 - **Check the steps.** Tick *Show what happened at each step* to see how many runs reached each step, which branch they took and how many failed.
 - **Emails count on your plan.** Emails sent by workflows count as messages, like WhatsApp templates.
 
-## 6. Keeping an eye
+## 6. Branches, targets and packs
+- **Analytics → Branches** puts every branch side by side. The *index* compares each branch with what the business converts on leads from the same sources, so a walk-in-heavy branch isn't flattered. Click a branch for its team, and see leads moved between branches at the bottom.
+- **Analytics → Targets:** set monthly or quarterly targets for the business, a branch or a person. The four measures are leads handled, conversions, revenue and collections. People see their own targets in My day, and managers see them all on the dashboard.
+- **Leaderboard:** off until you switch it on in Settings. When on, everyone sees the ranking.
+- **Report packs:** in Reports, schedule the owner, branch manager or marketing pack weekly or monthly. They arrive by email with CSV files attached. "See a pack now" shows the same pack, ready to save as PDF.
+
+## 7. Keeping an eye
 - **Analytics:** the executive tab every morning. Sales tab: salespeople compared fairly, adjusted for the leads they got.
 - **Audit log:** every settings change, export and import. You get a notification when someone exports 1,000 rows or more.
 - **Exports** are limited to 20 an hour per person. That's enough for real work, and slows down anyone copying the database.

@@ -61,6 +61,8 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
   const { data: housekeeping } = await admin.rpc("housekeeping");
   // Trials ending, grace running out and reminders. Cheap; safe every run.
   const { data: billing, error: billingError } = await admin.rpc("billing_tick");
+  // Analytics rollups for days older than 90 (Sprint 15): re-rolls changed days, extends the history a bit each pass.
+  const { data: rollups, error: rollupError } = await admin.rpc("refresh_analytics_rollups", { p_max_days: 60 });
   // Usage snapshot once a day (the first run after 18:30 UTC, midnight IST); safe to repeat.
   const now = new Date();
   const usageSnapshot =
@@ -99,6 +101,7 @@ async function runAll(admin: ReturnType<typeof createAdminClient>, origin: strin
     outboundWebhooks,
     housekeeping,
     usageSnapshot,
+    rollups: rollupError ? { error: rollupError.message } : rollups,
     billing: billingError ? { error: billingError.message } : billing,
   };
 }
